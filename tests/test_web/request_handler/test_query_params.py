@@ -4,7 +4,7 @@ from enum import Enum
 from typing import Optional, List
 
 from tornado.httputil import url_concat
-from tornado.web import url, RequestHandler
+from tornado.web import url
 from torn_open.web import Application, AnnotatedHandler
 
 
@@ -533,7 +533,7 @@ async def test_calling_invalid_required_enum_query_param_handler(http_client, ba
 
 
 @pytest.mark.gen_test
-async def test_calling_optional_query_param_with_default_handler(http_client, base_url):
+async def test_calling_optional_query_param(http_client, base_url):
     params = {"query_param": "red"}
     url = url_concat(f"{base_url}/optional_enum_query_param", params)
     response = await http_client.fetch(

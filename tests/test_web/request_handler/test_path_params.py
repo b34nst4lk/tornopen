@@ -1,10 +1,8 @@
 import pytest
 import json
 from enum import Enum
-from typing import Optional, List
 
-from tornado.httputil import url_concat
-from tornado.web import url, RequestHandler
+from tornado.web import url
 from torn_open.web import Application, AnnotatedHandler
 
 

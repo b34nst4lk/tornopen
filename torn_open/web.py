@@ -1,5 +1,4 @@
 import inspect
-import json
 import re
 
 from typing import (
@@ -23,7 +22,6 @@ import tornado.ioloop
 import tornado.options
 import tornado.log
 
-from pydantic import validate_arguments, BaseModel
 
 OptionalType = Tuple[type, type(None)]
 OptionalGenericMeta = Tuple[GenericMeta, type(None)]
@@ -104,7 +102,6 @@ class AnnotatedHandler(tornado.web.RequestHandler):
 
             cls._set_path_param_names(method, rule)
             cls._set_query_param_names(method)
-            cls._set_json_param_name(method)
 
     @classmethod
     def _set_path_param_names(cls, method, rule: Pattern):
@@ -125,23 +122,11 @@ class AnnotatedHandler(tornado.web.RequestHandler):
                 [
                     param_name in cls.path_params[method.__name__],
                     param_name == "self",
-                    issubclass(parameter.annotation, BaseModel),
                 ]
             )
             if not_query_param:
                 continue
             cls.query_params[method.__name__][param_name] = parameter
-
-    @classmethod
-    def _set_json_param_name(cls, method):
-        cls.json_param[method.__name__] = {}
-        signature = inspect.signature(method)
-        for param_name, parameter in signature.parameters.items():
-            is_json_param = issubclass(parameter.annotation, BaseModel)
-            if not is_json_param:
-                continue
-
-            cls.json_param[method.__name__][param_name] = parameter
 
     def _collect_params(
         self,
@@ -153,13 +138,9 @@ class AnnotatedHandler(tornado.web.RequestHandler):
 
         path_kwargs = self._parse_path_params(method)
         query_kwargs = self._parse_query_params(method)
-        # json_kwargs = {
-        #     name: json.loads(self.request.body) for name in self.json_param[method]
-        # }
         return {
             **path_kwargs,
             **query_kwargs,
-            # **json_kwargs,
         }
 
     def _parse_path_params(self, http_method: str) -> Dict[str, str]:
@@ -217,14 +198,16 @@ class AnnotatedHandler(tornado.web.RequestHandler):
 
             # If XSRF cookies are turned on, reject form submissions without
             # the proper cookie
-            if (
-                self.request.method
-                not in (
-                    "GET",
-                    "HEAD",
-                    "OPTIONS",
-                )
-                and self.application.settings.get("xsrf_cookies")
+            if all(
+                [
+                    self.request.method
+                    not in (
+                        "GET",
+                        "HEAD",
+                        "OPTIONS",
+                    ),
+                    self.application.settings.get("xsrf_cookies"),
+                ]
             ):
                 self.check_xsrf_cookie()
 
