@@ -1,0 +1,7 @@
+pip-chill==1.0.1
+pydantic==1.7.3
+pytest-tornado==0.8.1
+pytest-watch==4.2.0
+rope==0.18.0
+sortedcontainers==2.3.0
+typed-ast==1.4.2
