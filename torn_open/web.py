@@ -4,15 +4,13 @@ import re
 
 from typing import (
     Any,
-    List,
     Callable,
     Dict,
     Pattern,
     Type,
-    Union,
     Tuple,
-    GenericMeta,
 )
+
 from enum import EnumMeta
 
 import tornado.web
@@ -24,79 +22,9 @@ import tornado.options
 import tornado.log
 
 import pydantic
-from pydantic import BaseModel
 
-
-OptionalType = Tuple[type, type(None)]
-OptionalGenericMeta = Tuple[GenericMeta, type(None)]
-
-
-def is_optional(parameter_type: Union[type, Tuple[type]]):
-    if isinstance(parameter_type, tuple):
-        return type(None) in parameter_type
-    return False
-
-
-def cast(
-    parameter_type: Union[type, OptionalType, OptionalGenericMeta], val: Any, name: str
-):
-    # Retrieve type if parameter_type is optional
-    if isinstance(parameter_type, tuple):
-        parameter_type = parameter_type[0]
-
-    # Handle List type params
-    if isinstance(parameter_type, GenericMeta):
-        if parameter_type.__origin__ is List:
-            return check_list(parameter_type, val, name)
-        raise NotImplementedError(f"Unpacking of {parameter_type} not supported")
-
-    # Handle Enum params
-    if isinstance(parameter_type, EnumMeta):
-        return check_enum(parameter_type, val, name)
-
-    # Handle primitive params
-    try:
-        return parameter_type(val)
-    except ValueError:
-        raise tornado.web.HTTPError(400, f"invalid type {val} for parameter {name}")
-
-
-def check_list(
-    parameter_type: Union[type, OptionalType, OptionalGenericMeta], val: str, name: str
-):
-    val = val.split(",")
-    inner_type = parameter_type.__args__[0]
-    if isinstance(inner_type, EnumMeta):
-        # Testing if the list comprises of valid enum values
-        check_enum_list(inner_type, val, name)
-    else:
-        val = cast_list(inner_type, val, name)
-    return val
-
-
-def cast_list(parameter_type: type, val: List, name: str):
-    try:
-        return [parameter_type(item) for item in val]
-    except ValueError:
-        raise tornado.web.HTTPError(400, f"invalid type {val} for parameter {name}")
-
-
-def check_enum_list(enum: EnumMeta, val: List[Any], name: str):
-    [check_enum(enum, item, name) for item in val]
-    return val
-
-
-def check_enum(enum: EnumMeta, val: Any, name: str):
-    try:
-        enum[val]
-        return val
-    except KeyError:
-        raise tornado.web.HTTPError(400, f"invalid value {val} for parameter {name}")
-
-
-class RequestModel(BaseModel):
-    pass
-
+from torn_open import types
+from torn_open import models
 
 class AnnotatedHandler(tornado.web.RequestHandler):
     def __init_subclass__(cls, **kwargs):
@@ -133,17 +61,19 @@ class AnnotatedHandler(tornado.web.RequestHandler):
         cls.query_params[method.__name__] = {}
         signature = inspect.signature(method)
         for param_name, parameter in signature.parameters.items():
-            parameter_type = parameter.annotation
-            not_query_param = any(
-                [
-                    param_name in cls.path_params[method.__name__],
-                    param_name == "self",
-                    issubclass(parameter_type, RequestModel),
-                ]
-            )
-            if not_query_param:
+            if not cls._is_query_param(param_name, parameter, method):
                 continue
             cls.query_params[method.__name__][param_name] = parameter
+
+    @classmethod
+    def _is_query_param(cls, param_name, parameter, method):
+        return all(
+            [
+                param_name not in cls.path_params[method.__name__],
+                param_name != "self",
+                not issubclass(parameter.annotation, models.RequestModel),
+            ]
+        )
 
     @classmethod
     def _set_json_param_names(cls, method):
@@ -151,15 +81,7 @@ class AnnotatedHandler(tornado.web.RequestHandler):
         json_params = []
         signature = inspect.signature(method)
         for param_name, parameter in signature.parameters.items():
-            not_json_param = any(
-                [
-                    param_name in cls.path_params[method.__name__],
-                    param_name in cls.query_params[method.__name__],
-                    param_name == "self",
-                    not issubclass(parameter.annotation, RequestModel),
-                ]
-            )
-            if not_json_param:
+            if not cls._is_json_param(param_name, parameter, method):
                 continue
 
             json_params.append(param_name)
@@ -169,6 +91,17 @@ class AnnotatedHandler(tornado.web.RequestHandler):
             raise ValueError(
                 f"{cls.__name__}.{method.__name__}:only one json param allowed"
             )
+
+    @classmethod
+    def _is_json_param(cls, param_name, parameter, method) -> bool:
+        return all(
+            [
+                param_name not in cls.path_params[method.__name__],
+                param_name not in cls.query_params[method.__name__],
+                param_name != "self",
+                issubclass(parameter.annotation, models.RequestModel),
+            ]
+        )
 
     def _collect_params(
         self,
@@ -200,8 +133,8 @@ class AnnotatedHandler(tornado.web.RequestHandler):
         parameter: inspect.Parameter = self.path_params[http_method][name]
         param_type = parameter.annotation
         if isinstance(param_type, EnumMeta):
-            return check_enum(param_type, val, name)
-        return cast(param_type, val, name)
+            return types.check_enum(param_type, val, name)
+        return types.cast(param_type, val, name)
 
     def _parse_query_params(self, http_method):
         query_kwargs = {}
@@ -219,11 +152,11 @@ class AnnotatedHandler(tornado.web.RequestHandler):
         query_kwarg = self.get_query_argument(name, default=None)
 
         if query_kwarg:
-            return cast(parameter_type, query_kwarg, name)
+            return types.cast(parameter_type, query_kwarg, name)
 
         if parameter.default != inspect._empty:
             return parameter.default
-        elif is_optional(parameter_type):
+        elif types.is_optional(parameter_type):
             return None
         raise tornado.web.MissingArgumentError(name)
 
@@ -301,8 +234,13 @@ class AnnotatedHandler(tornado.web.RequestHandler):
             result = method(**params)
             if result is not None:
                 result = yield result
+            if result and isinstance(result, models.ResponseModel) and not self._finished:
+                self.write(result.json())
             if self._auto_finish and not self._finished:
                 self.finish()
+        except (models.ClientError, models.ServerError) as e:
+            self.write(e.json())
+            self.finish()
         except Exception as e:
             try:
                 self._handle_request_exception(e)
