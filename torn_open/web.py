@@ -26,11 +26,21 @@ import pydantic
 from torn_open import types
 from torn_open import models
 
+from apispec import APISpec
+from torn_open.api_spec_plugin import TornOpenPlugin
+
+
 class AnnotatedHandler(tornado.web.RequestHandler):
+
+    path_params: Dict[str, inspect.Parameter] = {}
+    query_params: Dict[str, Dict[str, inspect.Parameter]] = {}
+    json_param: Dict[str, Tuple[str, inspect.Parameter]] = {}
+
+
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
 
-        cls.path_params: Dict[str, Dict[str, inspect.Parameter]] = {}
+        cls.path_params: Dict[str, inspect.Parameter] = {}
         cls.query_params: Dict[str, Dict[str, inspect.Parameter]] = {}
         cls.json_param: Dict[str, Tuple[str, inspect.Parameter]] = {}
 
@@ -49,27 +59,26 @@ class AnnotatedHandler(tornado.web.RequestHandler):
     @classmethod
     def _set_path_param_names(cls, method, rule: Pattern):
         path_params = [param for param in rule.groupindex.keys()]
-        cls.path_params[method.__name__] = {}
         signature = inspect.signature(method)
         for param_name, parameter in signature.parameters.items():
             if param_name not in path_params:
                 continue
-            cls.path_params[method.__name__][param_name] = parameter
+            cls.path_params[param_name] = parameter
 
     @classmethod
     def _set_query_param_names(cls, method):
         cls.query_params[method.__name__] = {}
         signature = inspect.signature(method)
         for param_name, parameter in signature.parameters.items():
-            if not cls._is_query_param(param_name, parameter, method):
+            if not cls._is_query_param(param_name, parameter):
                 continue
             cls.query_params[method.__name__][param_name] = parameter
 
     @classmethod
-    def _is_query_param(cls, param_name, parameter, method):
+    def _is_query_param(cls, param_name, parameter):
         return all(
             [
-                param_name not in cls.path_params[method.__name__],
+                param_name not in cls.path_params,
                 param_name != "self",
                 not issubclass(parameter.annotation, models.RequestModel),
             ]
@@ -96,7 +105,7 @@ class AnnotatedHandler(tornado.web.RequestHandler):
     def _is_json_param(cls, param_name, parameter, method) -> bool:
         return all(
             [
-                param_name not in cls.path_params[method.__name__],
+                param_name not in cls.path_params,
                 param_name not in cls.query_params[method.__name__],
                 param_name != "self",
                 issubclass(parameter.annotation, models.RequestModel),
@@ -111,7 +120,7 @@ class AnnotatedHandler(tornado.web.RequestHandler):
         # and not both, so we process both them differently
         method = cls_http_method.__name__
 
-        path_kwargs = self._parse_path_params(method)
+        path_kwargs = self._parse_path_params()
         query_kwargs = self._parse_query_params(method)
         json_kwarg = {}
         if self.json_param[method]:
@@ -123,14 +132,14 @@ class AnnotatedHandler(tornado.web.RequestHandler):
             **json_kwarg,
         }
 
-    def _parse_path_params(self, http_method: str) -> Dict[str, str]:
+    def _parse_path_params(self) -> Dict[str, str]:
         path_kwargs = {}
         for name, val in self.path_kwargs.items():
-            path_kwargs[name] = self._parse_path_param(http_method, val, name)
+            path_kwargs[name] = self._parse_path_param(val, name)
         return path_kwargs
 
-    def _parse_path_param(self, http_method: str, val: Any, name: str):
-        parameter: inspect.Parameter = self.path_params[http_method][name]
+    def _parse_path_param(self, val: Any, name: str):
+        parameter: inspect.Parameter = self.path_params[name]
         param_type = parameter.annotation
         if isinstance(param_type, EnumMeta):
             return types.check_enum(param_type, val, name)
@@ -182,6 +191,7 @@ class AnnotatedHandler(tornado.web.RequestHandler):
         try:
             if self.request.method not in self.SUPPORTED_METHODS:
                 raise tornado.web.HTTPError(405)
+
             self.path_args = [self.decode_argument(arg) for arg in args]
             self.path_kwargs = dict(
                 (k, self.decode_argument(v, name=k)) for (k, v) in kwargs.items()
@@ -234,7 +244,11 @@ class AnnotatedHandler(tornado.web.RequestHandler):
             result = method(**params)
             if result is not None:
                 result = yield result
-            if result and isinstance(result, models.ResponseModel) and not self._finished:
+            if (
+                result
+                and isinstance(result, models.ResponseModel)
+                and not self._finished
+            ):
                 self.write(result.json())
             if self._auto_finish and not self._finished:
                 self.finish()
@@ -267,6 +281,7 @@ class Application(tornado.web.Application):
     ):
         self._check_bindings(bindings)
         self._set_params_to_handlers(bindings)
+        self._create_api_spec(bindings)
         super().__init__(bindings, **kwargs)
 
     def _check_bindings(
@@ -310,3 +325,15 @@ class Application(tornado.web.Application):
             rule = re.compile(rule)
 
         return rule, handler_class
+
+    def _create_api_spec(self, bindings):
+        self.api_spec = APISpec(
+            title="tornado-server",
+            version="1.0.0",
+            openapi_version="3.0.0",
+            plugins=[TornOpenPlugin()],
+        )
+        for binding in bindings:
+            self.api_spec.path(
+                url_spec=binding,
+            )
