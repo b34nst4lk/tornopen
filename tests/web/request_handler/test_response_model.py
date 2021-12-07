@@ -5,6 +5,7 @@ from tornado.web import url
 from torn_open.web import Application, AnnotatedHandler
 from torn_open.models import ResponseModel
 
+
 @pytest.fixture
 def app():
     class MyResponseModel(ResponseModel):
@@ -22,6 +23,7 @@ def app():
     )
 
     return app
+
 
 @pytest.mark.gen_test
 async def test_response_model_handler(http_client, base_url):

@@ -35,6 +35,7 @@ class AnnotatedHandler(tornado.web.RequestHandler):
     This is the default doc string of the AnnotatedHandler. Add a doc
     string to the inherited handler overwrite this doc string.
     """
+
     path_params: Dict[str, inspect.Parameter] = {}
     query_params: Dict[str, Dict[str, inspect.Parameter]] = {}
     json_param: Dict[str, Tuple[str, inspect.Parameter]] = {}

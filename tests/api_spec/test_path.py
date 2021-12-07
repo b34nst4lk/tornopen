@@ -44,6 +44,7 @@ def app():
         """
         This is the doc string documentation
         """
+
         async def get(self):
             pass
 
@@ -147,6 +148,7 @@ def test_enum_schema_parameter_in_path_param_handler_spec(spec):
         },
     }
 
+
 def test_int_enum_schema_parameter_in_path_param_handler_spec(spec):
     path = "/int/enum/{path_param}"
     assert "parameters" in spec["paths"][path]
@@ -167,7 +169,9 @@ def test_int_enum_schema_parameter_in_path_param_handler_spec(spec):
         },
     }
 
+
 def test_description_path_handler_spec(spec):
     path = "/description"
     assert "description" in spec["paths"][path]
-    assert spec["paths"][path]["description"].strip() == "This is the doc string documentation"
+    description = spec["paths"][path]["description"].strip()
+    assert description =="This is the doc string documentation"

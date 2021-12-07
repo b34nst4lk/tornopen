@@ -18,6 +18,7 @@ import tornado.log
 OptionalType = Tuple[type, type(None)]
 OptionalGenericMeta = Tuple[GenericMeta, type(None)]
 
+
 def is_optional(parameter_type: Union[type, Tuple[type]]):
     if isinstance(parameter_type, tuple):
         return type(None) in parameter_type
