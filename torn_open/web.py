@@ -244,11 +244,11 @@ class AnnotatedHandler(tornado.web.RequestHandler):
             result = method(**params)
             if result is not None:
                 result = yield result
-            if (
-                result
-                and isinstance(result, models.ResponseModel)
-                and not self._finished
-            ):
+            if all([
+                result,
+                isinstance(result, models.ResponseModel),
+                not self._finished,
+            ]):
                 self.write(result.json())
             if self._auto_finish and not self._finished:
                 self.finish()

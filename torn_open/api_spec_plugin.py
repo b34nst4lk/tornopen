@@ -1,9 +1,4 @@
-import inspect
-import sys
-from tornado.web import URLSpec
-
-from apispec import BasePlugin, utils
-from apispec.exceptions import APISpecError
+from apispec import BasePlugin
 
 
 class TornOpenPlugin(BasePlugin):
