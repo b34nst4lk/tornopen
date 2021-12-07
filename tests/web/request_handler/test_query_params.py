@@ -10,22 +10,6 @@ from torn_open.web import Application, AnnotatedHandler
 
 @pytest.fixture
 def app():
-    class PathParamsHandler(AnnotatedHandler):
-        async def get(self, path_param: str):
-            self.write({"path_param": path_param})
-
-    class IntPathParamsHandler(AnnotatedHandler):
-        async def get(self, int_path_param: int):
-            self.write({"path_param": int_path_param})
-
-    class EnumPathParamHandler(AnnotatedHandler):
-        class EnumParam(Enum):
-            red = 1
-            blue = 2
-
-        async def get(self, color: EnumParam):
-            self.write({"color": color})
-
     class RequiredQueryParamHandler(AnnotatedHandler):
         def get(self, query_param: str):
             self.write({"query_param": query_param})

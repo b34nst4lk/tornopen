@@ -1,8 +1,11 @@
+from enum import Enum
+
 import pytest
 
 from tornado.web import url
 
 from torn_open.web import Application, AnnotatedHandler
+
 
 @pytest.fixture
 def app():
@@ -17,25 +20,154 @@ def app():
         def get(self, path_param: str, path_param_2: str):
             pass
 
-    return Application([
-        url(r"/(?P<path_param>[^/]+)", PathParamHandler),
-        url(r"/2/(?P<path_param>[^/]+)/*", PathParamHandler),
-        url(r"/(?P<path_param>[^/]+)/(?P<path_param_2>[^/]+)", PathParamsHandler),
-        url(r"/(?P<path_param_2>[^/]+)/(?P<path_param>[^/]+)", PathParamsHandler),
-    ])
+    class IntPathParamHandler(AnnotatedHandler):
+        def get(self, path_param: int):
+            pass
+
+    class EnumPathParamHandler(AnnotatedHandler):
+        class MyEnum(Enum):
+            hello = "hello"
+            goodbye = "goodbye"
+
+        def get(self, path_param: MyEnum):
+            pass
+
+    class IntEnumPathParamHandler(AnnotatedHandler):
+        class MyEnum(Enum):
+            hello = 1
+            goodbye = 2
+
+        def get(self, path_param: MyEnum):
+            pass
+
+    class PathWithDescriptionHandler(AnnotatedHandler):
+        """
+        This is the doc string documentation
+        """
+        async def get(self):
+            pass
+
+    return Application(
+        [
+            url(r"/(?P<path_param>[^/]+)", PathParamHandler),
+            url(r"/2/(?P<path_param>[^/]+)/*", PathParamHandler),
+            url(r"/(?P<path_param>[^/]+)/(?P<path_param_2>[^/]+)", PathParamsHandler),
+            url(r"/(?P<path_param_2>[^/]+)/(?P<path_param>[^/]+)", PathParamsHandler),
+            url(r"/int/(?P<path_param>[^/]+)", IntPathParamHandler),
+            url(r"/enum/(?P<path_param>[^/]+)", EnumPathParamHandler),
+            url(r"/int/enum/(?P<path_param>[^/]+)", IntEnumPathParamHandler),
+            url(r"/description", PathWithDescriptionHandler),
+        ]
+    )
+
 
 @pytest.fixture
 def spec(app):
     return app.api_spec.to_dict()
 
+
 def test_path_param_handler_spec(spec):
     assert "/{path_param}" in spec["paths"]
+
 
 def test_path_param_handler_with_trailing_slash_spec(spec):
     assert "/2/{path_param}" in spec["paths"]
 
+
 def test_path_params_handler_spec(spec):
     assert "/{path_param}/{path_param_2}" in spec["paths"]
 
+
 def test_path_params_handler_mixed_order_spec(spec):
     assert "/{path_param_2}/{path_param}" in spec["paths"]
+
+
+def test_operations_path_param_handler_spec(spec):
+    path = "/{path_param}"
+    assert "get" in spec["paths"][path]
+    assert "post" in spec["paths"][path]
+    spec["paths"][path].pop("parameters")
+    assert len(spec["paths"][path]) == 2
+
+
+def test_operations_path_params_handler_spec(spec):
+    path = "/{path_param}/{path_param_2}"
+    assert "get" in spec["paths"][path]
+    spec["paths"][path].pop("parameters")
+    assert len(spec["paths"][path]) == 1
+
+
+def test_int_parameter_in_path_param_handler_spec(spec):
+    path = "/int/{path_param}"
+    assert "parameters" in spec["paths"][path]
+
+    assert len(spec["paths"][path]["parameters"]) == 1
+
+    path_param = spec["paths"][path]["parameters"][0]
+    assert path_param == {
+        "name": "path_param",
+        "in": "path",
+        "required": True,
+        "schema": {"type": "number"},
+    }
+
+
+def test_parameters_in_path_param_handler_spec(spec):
+    path = "/{path_param}"
+    assert "parameters" in spec["paths"][path]
+
+    assert len(spec["paths"][path]["parameters"]) == 1
+
+    path_param = spec["paths"][path]["parameters"][0]
+    assert path_param == {
+        "name": "path_param",
+        "in": "path",
+        "required": True,
+        "schema": {"type": "string"},
+    }
+
+
+def test_enum_schema_parameter_in_path_param_handler_spec(spec):
+    path = "/enum/{path_param}"
+    assert "parameters" in spec["paths"][path]
+
+    assert len(spec["paths"][path]["parameters"]) == 1
+
+    path_param = spec["paths"][path]["parameters"][0]
+    assert path_param == {
+        "name": "path_param",
+        "in": "path",
+        "required": True,
+        "schema": {
+            "type": "string",
+            "enum": [
+                "hello",
+                "goodbye",
+            ],
+        },
+    }
+
+def test_int_enum_schema_parameter_in_path_param_handler_spec(spec):
+    path = "/int/enum/{path_param}"
+    assert "parameters" in spec["paths"][path]
+
+    assert len(spec["paths"][path]["parameters"]) == 1
+
+    path_param = spec["paths"][path]["parameters"][0]
+    assert path_param == {
+        "name": "path_param",
+        "in": "path",
+        "required": True,
+        "schema": {
+            "type": "number",
+            "enum": [
+                1,
+                2,
+            ],
+        },
+    }
+
+def test_description_path_handler_spec(spec):
+    path = "/description"
+    assert "description" in spec["paths"][path]
+    assert spec["paths"][path]["description"].strip() == "This is the doc string documentation"

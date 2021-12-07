@@ -31,11 +31,13 @@ from torn_open.api_spec_plugin import TornOpenPlugin
 
 
 class AnnotatedHandler(tornado.web.RequestHandler):
-
+    """
+    This is the default doc string of the AnnotatedHandler. Add a doc
+    string to the inherited handler overwrite this doc string.
+    """
     path_params: Dict[str, inspect.Parameter] = {}
     query_params: Dict[str, Dict[str, inspect.Parameter]] = {}
     json_param: Dict[str, Tuple[str, inspect.Parameter]] = {}
-
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -244,11 +246,13 @@ class AnnotatedHandler(tornado.web.RequestHandler):
             result = method(**params)
             if result is not None:
                 result = yield result
-            if all([
-                result,
-                isinstance(result, models.ResponseModel),
-                not self._finished,
-            ]):
+            if all(
+                [
+                    result,
+                    isinstance(result, models.ResponseModel),
+                    not self._finished,
+                ]
+            ):
                 self.write(result.json())
             if self._auto_finish and not self._finished:
                 self.finish()
@@ -334,6 +338,10 @@ class Application(tornado.web.Application):
             plugins=[TornOpenPlugin()],
         )
         for binding in bindings:
+            if not issubclass(binding.handler_class, AnnotatedHandler):
+                continue
             self.api_spec.path(
                 url_spec=binding,
+                handler_class=binding.handler_class,
+                description=binding.handler_class.__doc__,
             )
