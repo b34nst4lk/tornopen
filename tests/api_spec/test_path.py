@@ -109,7 +109,7 @@ def test_int_parameter_in_path_param_handler_spec(spec):
         "name": "path_param",
         "in": "path",
         "required": True,
-        "schema": {"type": "number"},
+        "schema": {"type": "integer"},
     }
 
 
@@ -161,7 +161,7 @@ def test_int_enum_schema_parameter_in_path_param_handler_spec(spec):
         "in": "path",
         "required": True,
         "schema": {
-            "type": "number",
+            "type": "integer",
             "enum": [
                 1,
                 2,

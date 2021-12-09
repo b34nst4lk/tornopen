@@ -1,7 +1,10 @@
 from enum import EnumMeta
+from typing import GenericMeta
+import inspect
 
 from apispec import BasePlugin
 
+from torn_open.types import is_optional
 
 class TornOpenPlugin(BasePlugin):
     """APISpec plugin for Tornado"""
@@ -12,7 +15,7 @@ class TornOpenPlugin(BasePlugin):
         return path
 
     def operation_helper(self, *, operations, url_spec, **_):
-        operations.update(**get_operations(url_spec))
+        operations.update(**Operations(url_spec))
 
 
 # Path helper methods
@@ -53,7 +56,6 @@ def get_path_params(url_spec):
 
 
 def _unpack_enum(enum_meta: EnumMeta):
-    print(enum_meta)
     for enum_item in enum_meta.__members__.values():
         yield enum_item.value
 
@@ -62,48 +64,193 @@ def _get_type_of_enum_value(enum_meta: EnumMeta):
     for enum_item in _unpack_enum(enum_meta):
         return type(enum_item)
 
+def _get_default_value_of_parameter(parameter: inspect.Parameter):
+    annotation = parameter.annotation
+    default = parameter.default if parameter.default is not inspect._empty else None
+    return default.value if default and isinstance(annotation, EnumMeta) else default
 
-def Type(annotation):
+def _get_type(annotation):
     types_mapping = {
         str: "string",
-        int: "number",
+        int: "integer",
+        float: "number",
+        "typing.List": "array",
     }
     if annotation in types_mapping:
         return types_mapping[annotation]
 
+    if is_optional(annotation):
+        return _get_type(annotation.__args__[0])
+
     if isinstance(annotation, EnumMeta):
         annotation = _get_type_of_enum_value(annotation)
-        return Type(annotation)
+        return _get_type(annotation)
 
+    if isinstance(annotation, GenericMeta):
+        annotation = str(annotation.__origin__)
+        return _get_type(annotation)
 
-def Schema(annotation):
-    _type = Type(annotation)
+    if not isinstance(annotation, type) and is_optional(annotation.__args__):
+        return _get_type(annotation.__args__[0])
+
+def _get_item_type(annotation):
+    if len(annotation.__args__) == 1:
+        item_type = _get_type(annotation.__args__[0])
+    elif is_optional(annotation):
+        item_type = _get_type(annotation.__args__[0].__args__[0])
+    else:
+        item_type = None
+    return item_type
+
+def Items(annotation):
+    if _get_type(annotation) != "array":
+        return None
+
+    item_type = _get_item_type(annotation)
+
+    return {
+        "type": item_type,
+    }
+
+def _get_type_of_optional_array(annotation):
+    return _get_type(annotation.__args__[0].__args__[0])
+
+def Schema(parameter: inspect.Parameter):
+    annotation = parameter.annotation
+    _type = _get_type(annotation)
     _enum = [*_unpack_enum(annotation)] if isinstance(annotation, EnumMeta) else None
+    default = _get_default_value_of_parameter(parameter)
+    items = Items(annotation)
 
     schema = {
         "type": _type,
         "enum": _enum,
+        "default": default,
+        "items": items,
     }
-    schema = {k: v for k, v in schema.items() if v}
+    schema = _clear_none_from_dict(schema)
     return schema
 
 
-def PathParameter(parameter):
+def PathParameter(parameter: inspect.Parameter):
+    return Parameter(parameter, param_type="path", required=True)
+
+
+def QueryParameter(parameter: inspect.Parameter):
+    return Parameter(parameter, param_type="query")
+
+
+def Parameter(parameter: inspect.Parameter, param_type, required: bool = None):
     return {
         "name": parameter.name,
-        "in": "path",
-        "required": True,
-        "schema": Schema(parameter.annotation),
+        "in": param_type,
+        "required": required if required is not None else not is_optional(parameter.annotation),
+        "schema": Schema(parameter),
     }
 
 
 # Operations helper methods
-def get_operations(url_spec):
-    handler = url_spec.handler_class
-    operations = {}
-    for method in handler.SUPPORTED_METHODS:
-        method = method.lower()
-        if getattr(handler, method) is handler._unimplemented_method:
-            continue
-        operations[method] = {}
+def Operations(url_spec):
+    implemented_methods = _get_implemented_http_methods(url_spec)
+    operations = {method: Operation(method, url_spec) for method in implemented_methods}
     return operations
+
+
+def Operation(method: str, url_spec):
+    operation = {
+        "parameters": _get_query_params(method, url_spec),
+        "description": _get_operation_description(method, url_spec),
+        "requestBody": RequestBody(method, url_spec),
+        "responses": Responses(method, url_spec),
+    }
+    operation = _clear_none_from_dict(operation)
+    return operation
+
+def _get_operation_description(method: str, url_spec):
+    handler = url_spec.handler_class
+    description = getattr(handler, method).__doc__
+    description = description.strip() if description else description
+    return description
+
+def _get_query_params(method, url_spec):
+    handler = url_spec.handler_class
+    parameters = handler.query_params[method].values()
+    return [QueryParameter(parameter) for parameter in parameters]
+
+
+def _get_implemented_http_methods(url_spec):
+    handler = url_spec.handler_class
+    return [
+        method.lower()
+        for method in handler.SUPPORTED_METHODS
+        if _is_implemented(method.lower(), handler)
+    ]
+
+def RequestBody(method: str, url_spec):
+    handler = url_spec.handler_class
+    json_param = handler.json_param[method]
+    if not json_param:
+        return None
+    _, parameter= json_param
+    return {
+        "content": {
+            "application/json": {
+                "schema": RequestBodySchema(parameter)
+            }
+        }
+    }
+
+def RequestBodySchema(parameter):
+    return parameter.annotation.schema()
+
+def Responses(method, url_spec):
+    return {
+        "200": SuccessResponse(method, url_spec)
+    }
+
+def SuccessResponse(method, url_spec):
+    response_model = url_spec.handler_class.response_models[method]
+    return {
+        "description": get_success_response_description(response_model),
+        "content": {
+            "application/json": {
+                "schema": SuccessResponseModelSchema(response_model)
+            }
+        }
+    }
+
+def get_success_response_description(response_model):
+    TEMPLATE_RESPONSE_DESCRIPTION = '''
+    Include a `torn_open.models.ResponseModel` annotation with documentation to overwrite this default description.
+
+    Example
+    ```python
+    from torn_open.web import AnnotatedHandler
+    from torn_open.models import ResponseModel
+
+    class MyResponseModel(ResponseModel):
+        """
+        Successfully retrieved my response model
+        """
+        spam: str
+        ham: int
+
+    class MyHandler(AnnotatedHandler):
+        async def get(self) -> MyResponseModel:
+            pass
+
+    ```
+    '''
+    description = response_model.__doc__ if response_model else TEMPLATE_RESPONSE_DESCRIPTION
+    return description
+
+def SuccessResponseModelSchema(response_model):
+    schema = response_model.schema if response_model else None
+    return schema
+
+
+def _is_implemented(method, handler):
+    return getattr(handler, method) is not handler._unimplemented_method
+
+def _clear_none_from_dict(dictionary):
+    return {k: v for k, v in dictionary.items() if v}

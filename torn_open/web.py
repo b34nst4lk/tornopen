@@ -39,6 +39,7 @@ class AnnotatedHandler(tornado.web.RequestHandler):
     path_params: Dict[str, inspect.Parameter] = {}
     query_params: Dict[str, Dict[str, inspect.Parameter]] = {}
     json_param: Dict[str, Tuple[str, inspect.Parameter]] = {}
+    response_models: Dict[str, models.ResponseModel] = {}
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -46,6 +47,7 @@ class AnnotatedHandler(tornado.web.RequestHandler):
         cls.path_params: Dict[str, inspect.Parameter] = {}
         cls.query_params: Dict[str, Dict[str, inspect.Parameter]] = {}
         cls.json_param: Dict[str, Tuple[str, inspect.Parameter]] = {}
+        cls.response_models: Dict[str, models.ResponseModel] = {}
 
     @classmethod
     def _set_params(cls, rule: Pattern):
@@ -58,6 +60,7 @@ class AnnotatedHandler(tornado.web.RequestHandler):
             cls._set_path_param_names(method, rule)
             cls._set_query_param_names(method)
             cls._set_json_param_names(method)
+            cls._set_response_models(method)
 
     @classmethod
     def _set_path_param_names(cls, method, rule: Pattern):
@@ -114,6 +117,13 @@ class AnnotatedHandler(tornado.web.RequestHandler):
                 issubclass(parameter.annotation, models.RequestModel),
             ]
         )
+
+
+    @classmethod
+    def _set_response_models(cls, method):
+        signature = inspect.signature(method)
+        response_model = signature.return_annotation if signature.return_annotation != inspect._empty else None
+        cls.response_models[method.__name__] = response_model
 
     def _collect_params(
         self,
@@ -278,6 +288,41 @@ class AnnotatedHandler(tornado.web.RequestHandler):
                 self._prepared_future.set_result(None)
 
 
+class OpenAPISpecHandler(tornado.web.RequestHandler):
+    def get(self):
+        spec = json.dumps(self.application.api_spec.to_dict())
+        self.write(spec)
+
+class RedocHandler(tornado.web.RequestHandler):
+    def get(self):
+        TEMPLATE = """
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Redoc</title>
+    <!-- needed for adaptive design -->
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700" rel="stylesheet">
+
+    <!--
+    Redoc doesn't change outer page styles
+    -->
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <redoc spec-url='/openapi.json'></redoc>
+    <script src="https://cdn.jsdelivr.net/npm/redoc@latest/bundles/redoc.standalone.js"> </script>
+  </body>
+</html>
+        """
+        self.write(TEMPLATE)
+
 class Application(tornado.web.Application):
     def __init__(
         self,
@@ -346,3 +391,5 @@ class Application(tornado.web.Application):
                 handler_class=binding.handler_class,
                 description=binding.handler_class.__doc__,
             )
+        bindings.append(tornado.web.url("/openapi.json", OpenAPISpecHandler))
+        bindings.append(tornado.web.url("/redoc", RedocHandler))
