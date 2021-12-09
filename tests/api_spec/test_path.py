@@ -174,4 +174,4 @@ def test_description_path_handler_spec(spec):
     path = "/description"
     assert "description" in spec["paths"][path]
     description = spec["paths"][path]["description"].strip()
-    assert description =="This is the doc string documentation"
+    assert description == "This is the doc string documentation"

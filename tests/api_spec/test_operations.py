@@ -70,7 +70,6 @@ def app():
             """
             pass
 
-
     class MyEnum(Enum):
         x = "x"
         y = "y"
@@ -94,7 +93,6 @@ def app():
     class ResponsesHandler(AnnotatedHandler):
         def post(self) -> MyResponseBody:
             pass
-
 
     return Application(
         [
@@ -362,6 +360,7 @@ def test_request_model(paths):
     assert "content" in request_body
     assert "application/json" in request_body["content"]
     assert "schema" in request_body["content"]["application/json"]
+
 
 def test_response_model(paths):
     operations = paths["/responses"]

@@ -6,6 +6,7 @@ from apispec import BasePlugin
 
 from torn_open.types import is_optional
 
+
 class TornOpenPlugin(BasePlugin):
     """APISpec plugin for Tornado"""
 
@@ -64,10 +65,12 @@ def _get_type_of_enum_value(enum_meta: EnumMeta):
     for enum_item in _unpack_enum(enum_meta):
         return type(enum_item)
 
+
 def _get_default_value_of_parameter(parameter: inspect.Parameter):
     annotation = parameter.annotation
     default = parameter.default if parameter.default is not inspect._empty else None
     return default.value if default and isinstance(annotation, EnumMeta) else default
+
 
 def _get_type(annotation):
     types_mapping = {
@@ -93,6 +96,7 @@ def _get_type(annotation):
     if not isinstance(annotation, type) and is_optional(annotation.__args__):
         return _get_type(annotation.__args__[0])
 
+
 def _get_item_type(annotation):
     if len(annotation.__args__) == 1:
         item_type = _get_type(annotation.__args__[0])
@@ -101,6 +105,7 @@ def _get_item_type(annotation):
     else:
         item_type = None
     return item_type
+
 
 def Items(annotation):
     if _get_type(annotation) != "array":
@@ -112,8 +117,10 @@ def Items(annotation):
         "type": item_type,
     }
 
+
 def _get_type_of_optional_array(annotation):
     return _get_type(annotation.__args__[0].__args__[0])
+
 
 def Schema(parameter: inspect.Parameter):
     annotation = parameter.annotation
@@ -144,7 +151,9 @@ def Parameter(parameter: inspect.Parameter, param_type, required: bool = None):
     return {
         "name": parameter.name,
         "in": param_type,
-        "required": required if required is not None else not is_optional(parameter.annotation),
+        "required": required
+        if required is not None
+        else not is_optional(parameter.annotation),
         "schema": Schema(parameter),
     }
 
@@ -166,11 +175,13 @@ def Operation(method: str, url_spec):
     operation = _clear_none_from_dict(operation)
     return operation
 
+
 def _get_operation_description(method: str, url_spec):
     handler = url_spec.handler_class
     description = getattr(handler, method).__doc__
     description = description.strip() if description else description
     return description
+
 
 def _get_query_params(method, url_spec):
     handler = url_spec.handler_class
@@ -186,38 +197,33 @@ def _get_implemented_http_methods(url_spec):
         if _is_implemented(method.lower(), handler)
     ]
 
+
 def RequestBody(method: str, url_spec):
     handler = url_spec.handler_class
     json_param = handler.json_param[method]
     if not json_param:
         return None
-    _, parameter= json_param
-    return {
-        "content": {
-            "application/json": {
-                "schema": RequestBodySchema(parameter)
-            }
-        }
-    }
+    _, parameter = json_param
+    return {"content": {"application/json": {"schema": RequestBodySchema(parameter)}}}
+
 
 def RequestBodySchema(parameter):
     return parameter.annotation.schema()
 
+
 def Responses(method, url_spec):
-    return {
-        "200": SuccessResponse(method, url_spec)
-    }
+    return {"200": SuccessResponse(method, url_spec)}
+
 
 def SuccessResponse(method, url_spec):
     response_model = url_spec.handler_class.response_models[method]
     return {
         "description": get_success_response_description(response_model),
         "content": {
-            "application/json": {
-                "schema": SuccessResponseModelSchema(response_model)
-            }
-        }
+            "application/json": {"schema": SuccessResponseModelSchema(response_model)}
+        },
     }
+
 
 def get_success_response_description(response_model):
     TEMPLATE_RESPONSE_DESCRIPTION = '''
@@ -241,8 +247,11 @@ def get_success_response_description(response_model):
 
     ```
     '''
-    description = response_model.__doc__ if response_model else TEMPLATE_RESPONSE_DESCRIPTION
+    description = (
+        response_model.__doc__ if response_model else TEMPLATE_RESPONSE_DESCRIPTION
+    )
     return description
+
 
 def SuccessResponseModelSchema(response_model):
     schema = response_model.schema if response_model else None
@@ -251,6 +260,7 @@ def SuccessResponseModelSchema(response_model):
 
 def _is_implemented(method, handler):
     return getattr(handler, method) is not handler._unimplemented_method
+
 
 def _clear_none_from_dict(dictionary):
     return {k: v for k, v in dictionary.items() if v}

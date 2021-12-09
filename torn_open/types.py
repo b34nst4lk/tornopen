@@ -18,6 +18,7 @@ import tornado.log
 OptionalType = Tuple[type, type(None)]
 OptionalGenericMeta = Tuple[GenericMeta, type(None)]
 
+
 def is_optional(parameter_type: Union[type, Tuple[type]]):
     if getattr(parameter_type, "__origin__", None) == Union:
         parameter_type = parameter_type.__args__

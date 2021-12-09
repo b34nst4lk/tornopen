@@ -44,7 +44,6 @@ def app():
         def post(self) -> MyResponseBody:
             pass
 
-
     return Application(
         [
             url(r"/str_query", QueryParamHandler),

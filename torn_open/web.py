@@ -118,11 +118,14 @@ class AnnotatedHandler(tornado.web.RequestHandler):
             ]
         )
 
-
     @classmethod
     def _set_response_models(cls, method):
         signature = inspect.signature(method)
-        response_model = signature.return_annotation if signature.return_annotation != inspect._empty else None
+        response_model = (
+            signature.return_annotation
+            if signature.return_annotation != inspect._empty
+            else None
+        )
         cls.response_models[method.__name__] = response_model
 
     def _collect_params(
@@ -293,6 +296,7 @@ class OpenAPISpecHandler(tornado.web.RequestHandler):
         spec = json.dumps(self.application.api_spec.to_dict())
         self.write(spec)
 
+
 class RedocHandler(tornado.web.RequestHandler):
     def get(self):
         TEMPLATE = """
@@ -322,6 +326,7 @@ class RedocHandler(tornado.web.RequestHandler):
 </html>
         """
         self.write(TEMPLATE)
+
 
 class Application(tornado.web.Application):
     def __init__(
