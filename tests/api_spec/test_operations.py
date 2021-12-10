@@ -374,3 +374,14 @@ def test_response_model(paths):
 
     success_response = responses["200"]
     assert "description" in success_response
+
+
+def test_no_definition_in_schema(paths):
+    content = paths["/responses"]["post"]["responses"]["200"]["content"]
+    schema = content["application/json"]["schema"]
+    assert "definitions" not in schema
+
+
+def test_has_components_schema(spec):
+    assert "components" in spec
+    assert "schemas" in spec["components"]

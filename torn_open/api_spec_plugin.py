@@ -1,14 +1,47 @@
-from enum import EnumMeta
+from collections import OrderedDict
 from typing import GenericMeta
+from enum import EnumMeta
 import inspect
 
-from apispec import BasePlugin
+from apispec import BasePlugin, APISpec
+from apispec.core import Components
+from apispec.utils import OpenAPIVersion
 
 from torn_open.types import is_optional
 
 
+class TornOpenComponents(Components):
+    def schema(self, component_id, component, **kwargs):
+        if self.schemas.get(component_id) == component:
+            return self
+
+        super().schema(component_id, component, **kwargs)
+
+
+class TornOpenAPISpec(APISpec):
+    def __init__(self, title, version, openapi_version, plugins=(), **options):
+        self.title = title
+        self.version = version
+        self.openapi_version = OpenAPIVersion(openapi_version)
+        self.options = options
+        self.plugins = plugins
+
+        # Metadata
+        self._tags = []
+        self._paths = OrderedDict()
+
+        # Components
+        self.components = TornOpenComponents(self.plugins, self.openapi_version)
+
+        # Plugins
+        for plugin in self.plugins:
+            plugin.init_spec(self)
+
 class TornOpenPlugin(BasePlugin):
     """APISpec plugin for Tornado"""
+
+    def init_spec(self, spec):
+        self.spec = spec
 
     def path_helper(self, *, url_spec, parameters, **_):
         path = get_path(url_spec)
@@ -16,7 +49,7 @@ class TornOpenPlugin(BasePlugin):
         return path
 
     def operation_helper(self, *, operations, url_spec, **_):
-        operations.update(**Operations(url_spec))
+        operations.update(**Operations(url_spec, self.spec.components))
 
 
 # Path helper methods
@@ -159,18 +192,21 @@ def Parameter(parameter: inspect.Parameter, param_type, required: bool = None):
 
 
 # Operations helper methods
-def Operations(url_spec):
+def Operations(url_spec, components):
     implemented_methods = _get_implemented_http_methods(url_spec)
-    operations = {method: Operation(method, url_spec) for method in implemented_methods}
+    operations = {
+        method: Operation(method, url_spec, components)
+        for method in implemented_methods
+    }
     return operations
 
 
-def Operation(method: str, url_spec):
+def Operation(method: str, url_spec, components):
     operation = {
         "parameters": _get_query_params(method, url_spec),
         "description": _get_operation_description(method, url_spec),
         "requestBody": RequestBody(method, url_spec),
-        "responses": Responses(method, url_spec),
+        "responses": Responses(method, url_spec, components),
     }
     operation = _clear_none_from_dict(operation)
     return operation
@@ -198,6 +234,9 @@ def _get_implemented_http_methods(url_spec):
     ]
 
 
+SCHEMA_REF_TEMPLATE = "#/components/schemas/{model}"
+
+
 def RequestBody(method: str, url_spec):
     handler = url_spec.handler_class
     json_param = handler.json_param[method]
@@ -208,19 +247,21 @@ def RequestBody(method: str, url_spec):
 
 
 def RequestBodySchema(parameter):
-    return parameter.annotation.schema()
+    return parameter.annotation.schema(ref_template=SCHEMA_REF_TEMPLATE)
 
 
-def Responses(method, url_spec):
-    return {"200": SuccessResponse(method, url_spec)}
+def Responses(method, url_spec, components):
+    return {"200": SuccessResponse(method, url_spec, components)}
 
 
-def SuccessResponse(method, url_spec):
+def SuccessResponse(method, url_spec, components):
     response_model = url_spec.handler_class.response_models[method]
     return {
         "description": get_success_response_description(response_model),
         "content": {
-            "application/json": {"schema": SuccessResponseModelSchema(response_model)}
+            "application/json": {
+                "schema": SuccessResponseModelSchema(response_model, components)
+            }
         },
     }
 
@@ -247,14 +288,27 @@ def get_success_response_description(response_model):
 
     ```
     '''
-    description = (
-        response_model.__doc__ if response_model else TEMPLATE_RESPONSE_DESCRIPTION
-    )
+    description = TEMPLATE_RESPONSE_DESCRIPTION.strip()
+    if response_model and response_model.__doc__:
+        description = response_model.__doc__.strip()
     return description
 
 
-def SuccessResponseModelSchema(response_model):
-    schema = response_model.schema if response_model else None
+def SuccessResponseModelSchema(response_model, components):
+    schema = (
+        response_model.schema(ref_template=SCHEMA_REF_TEMPLATE)
+        if response_model
+        else None
+    )
+    if not schema:
+        return schema
+
+    referenced_schemas = schema.pop("definitions", {})
+    if not referenced_schemas:
+        return schema
+
+    for referenced_schema_id, referenced_schema in referenced_schemas.items():
+        components.schema(referenced_schema_id, referenced_schema)
     return schema
 
 

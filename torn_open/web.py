@@ -26,8 +26,7 @@ import pydantic
 from torn_open import types
 from torn_open import models
 
-from apispec import APISpec
-from torn_open.api_spec_plugin import TornOpenPlugin
+from torn_open.api_spec_plugin import TornOpenPlugin, TornOpenAPISpec
 
 
 class AnnotatedHandler(tornado.web.RequestHandler):
@@ -382,7 +381,7 @@ class Application(tornado.web.Application):
         return rule, handler_class
 
     def _create_api_spec(self, bindings):
-        self.api_spec = APISpec(
+        self.api_spec = TornOpenAPISpec(
             title="tornado-server",
             version="1.0.0",
             openapi_version="3.0.0",
