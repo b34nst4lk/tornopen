@@ -81,13 +81,20 @@ class AnnotatedHandler(tornado.web.RequestHandler):
 
     @classmethod
     def _is_query_param(cls, param_name, parameter):
-        return all(
-            [
-                param_name not in cls.path_params,
-                param_name != "self",
-                not issubclass(parameter.annotation, models.RequestModel),
-            ]
-        )
+        is_annotated = parameter.annotation != inspect._empty
+        is_path_param = param_name in cls.path_params
+        is_self = param_name == "self"
+        is_class = inspect.isclass(parameter.annotation)
+        
+        if not is_annotated:
+            return False
+        if is_self:
+            return False
+        if is_path_param:
+            return False
+        if is_class:
+            return not issubclass(parameter.annotation, models.RequestModel)
+        return True
 
     @classmethod
     def _set_json_param_names(cls, method):
@@ -108,14 +115,20 @@ class AnnotatedHandler(tornado.web.RequestHandler):
 
     @classmethod
     def _is_json_param(cls, param_name, parameter, method) -> bool:
-        return all(
-            [
-                param_name not in cls.path_params,
-                param_name not in cls.query_params[method.__name__],
-                param_name != "self",
-                issubclass(parameter.annotation, models.RequestModel),
-            ]
-        )
+        is_annotated = parameter.annotation != inspect._empty
+        is_path_param = param_name in cls.path_params
+        is_self = param_name == "self"
+        is_class = inspect.isclass(parameter.annotation)
+ 
+        if not is_annotated:
+            return False
+        if is_self:
+            return False
+        if is_path_param:
+            return False
+        if is_class:
+            return issubclass(parameter.annotation, models.RequestModel)
+        return False
 
     @classmethod
     def _set_response_models(cls, method):
@@ -167,11 +180,7 @@ class AnnotatedHandler(tornado.web.RequestHandler):
         return query_kwargs
 
     def _parse_query_param(self, name, parameter):
-        parameter_type = (
-            parameter.annotation
-            if isinstance(parameter.annotation, type)
-            else parameter.annotation.__args__
-        )
+        parameter_type = parameter.annotation
 
         query_kwarg = self.get_query_argument(name, default=None)
 

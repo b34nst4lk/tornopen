@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import GenericMeta
+from typing import List
 from enum import EnumMeta
 import inspect
 
@@ -7,7 +7,7 @@ from apispec import BasePlugin, APISpec
 from apispec.core import Components
 from apispec.utils import OpenAPIVersion
 
-from torn_open.types import is_optional
+from torn_open.types import is_optional, is_list
 
 
 class TornOpenComponents(Components):
@@ -110,7 +110,8 @@ def _get_type(annotation):
         str: "string",
         int: "integer",
         float: "number",
-        "typing.List": "array",
+        list: "array",
+        List: "array",
     }
     if annotation in types_mapping:
         return types_mapping[annotation]
@@ -122,13 +123,12 @@ def _get_type(annotation):
         annotation = _get_type_of_enum_value(annotation)
         return _get_type(annotation)
 
-    if isinstance(annotation, GenericMeta):
-        annotation = str(annotation.__origin__)
+    if is_list(annotation):
+        annotation = annotation.__origin__
         return _get_type(annotation)
 
     if not isinstance(annotation, type) and is_optional(annotation.__args__):
         return _get_type(annotation.__args__[0])
-
 
 def _get_item_type(annotation):
     if len(annotation.__args__) == 1:

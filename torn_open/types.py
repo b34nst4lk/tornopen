@@ -1,9 +1,23 @@
+from sys import version_info
+
+if version_info[1] < 7:
+    from typing import GenericMeta as _GenericAlias
+    from typing import GenericMeta as _SpecialGenericAlias
+elif version_info[1] < 9:
+    from typing import _GenericAlias
+    from typing import _GenericAlias as _SpecialGenericAlias
+else:
+    from typing import (
+        _SpecialGenericAlias,
+        _GenericAlias,
+    )
+
 from typing import (
     Any,
     List,
     Union,
     Tuple,
-    GenericMeta,
+    Optional,
 )
 from enum import EnumMeta
 
@@ -15,9 +29,9 @@ import tornado.ioloop
 import tornado.options
 import tornado.log
 
-OptionalType = Tuple[type, type(None)]
-OptionalGenericMeta = Tuple[GenericMeta, type(None)]
-
+OptionalType = Optional[type]
+OptionalList = Optional[List]
+GenericAliases = (_SpecialGenericAlias, _GenericAlias)
 
 def is_optional(parameter_type: Union[type, Tuple[type]]):
     if getattr(parameter_type, "__origin__", None) == Union:
@@ -26,19 +40,25 @@ def is_optional(parameter_type: Union[type, Tuple[type]]):
         return type(None) in parameter_type
     return False
 
+def is_list(parameter_type):
+    if parameter_type is list:
+        return True
+    if isinstance(parameter_type, GenericAliases) and parameter_type.__origin__ in (list, List):
+        return True
+    return False
 
 def cast(
-    parameter_type: Union[type, OptionalType, OptionalGenericMeta], val: Any, name: str
+    parameter_type: Union[type, OptionalType, OptionalList], val: Any, name: str
 ):
     # Retrieve type if parameter_type is optional
+    if is_optional(parameter_type):
+        parameter_type = parameter_type.__args__[0]
+
     if isinstance(parameter_type, tuple):
         parameter_type = parameter_type[0]
 
-    # Handle List type params
-    if isinstance(parameter_type, GenericMeta):
-        if parameter_type.__origin__ is List:
-            return check_list(parameter_type, val, name)
-        raise NotImplementedError(f"Unpacking of {parameter_type} not supported")
+    if is_list(parameter_type):
+        return check_list(parameter_type, val, name)
 
     # Handle Enum params
     if isinstance(parameter_type, EnumMeta):
@@ -52,7 +72,7 @@ def cast(
 
 
 def check_list(
-    parameter_type: Union[type, OptionalType, OptionalGenericMeta], val: str, name: str
+    parameter_type: Union[type, OptionalType, OptionalList], val: str, name: str
 ):
     val_list: List = val.split(",")
     inner_type = parameter_type.__args__[0]
