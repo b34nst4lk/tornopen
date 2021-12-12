@@ -1,6 +1,6 @@
 # TornOpen 
 
-TornOpen is an extension of [Tornado] that relies on both native type annotation and [pydantic](https://github.com/samuelcolvin/pydantic) to generate [OpenAPI]() compliant documentation on [Redoc]
+TornOpen is an extension of [Tornado] that relies on both native type annotation and [pydantic] to generate [OpenAPI] compliant documentation on [Redoc]
 
 ---
 ## Requirements
