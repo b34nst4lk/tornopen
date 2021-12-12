@@ -1,6 +1,6 @@
 # TornOpen 
 
-TornOpen is an extension of [Tornado] that relies on both native type annotation and [pydantic](https://github.com/samuelcolvin/pydantic) to generate [OpenAPI]() compliant documentation on [Redoc](https://github.com/Redocly/redoc)
+TornOpen is an extension of [Tornado] that relies on both native type annotation and [pydantic](https://github.com/samuelcolvin/pydantic) to generate [OpenAPI]() compliant documentation on [Redoc]
 
 ---
 ## Requirements
@@ -66,16 +66,17 @@ if __name__ == "__main__":
     IOLoop.current().start()
 ```
 
-[Redoc Output](/example_redoc.png)
+![Redoc Output](/example_redoc.png)
 
 ---
 
 ## Acknowledgements
 - [FastAPI]
-- [pydantic]
 - [Redoc]
+- [pydantic]
 
-[Tornado]: https://github.com/tornadoweb/tornado
 [FastAPI]: https://github.com/tiangolo/fastapi
-[pydantic]: https://github.com/tiangolo/fastapi
 [OpenAPI]: https://github.com/OAI/OpenAPI-Specification
+[Redoc]: https://github.com/Redocly/redoc
+[Tornado]: https://github.com/tornadoweb/tornado
+[pydantic]: https://github.com/tiangolo/fastapi
