@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from torn_open.web import Application, AnnotatedHandler
 from torn_open.models import RequestModel, ResponseModel
 
-from tests.api_spec.schema_util import SharedSchema1Handler
+# from tests.api_spec.schema_util import SharedSchema1Handler
 
 @pytest.fixture
 def app():
