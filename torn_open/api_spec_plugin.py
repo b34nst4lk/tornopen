@@ -205,6 +205,7 @@ def Operations(url_spec, components):
 def Operation(method: str, url_spec, components):
     operation = {
         "tags": _get_tags(method, url_spec),
+        "summary": _get_summary(method, url_spec),
         "parameters": _get_query_params(method, url_spec),
         "description": _get_operation_description(method, url_spec),
         "requestBody": RequestBody(method, url_spec),
@@ -219,6 +220,13 @@ def _get_tags(method, url_spec):
     if method is handler._unimplemented_method:
         return None
     return getattr(method, "_openapi_tags", None)
+
+def _get_summary(method, url_spec):
+    handler = url_spec.handler_class
+    method = getattr(handler, method, None)
+    if method is handler._unimplemented_method:
+        return None
+    return getattr(method, "_openapi_summary", None)
 
 def _get_operation_description(method: str, url_spec):
     handler = url_spec.handler_class
@@ -323,6 +331,18 @@ def SuccessResponseModelSchema(response_model, components):
 def tags(*tag_list):
     def decorator(func):
         func._openapi_tags = [*tag_list]
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+def summary(summary_text):
+    def decorator(func):
+        func._openapi_summary = summary_text
 
         @wraps(func)
         def wrapper(*args, **kwargs):

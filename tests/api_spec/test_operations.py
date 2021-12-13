@@ -7,7 +7,7 @@ from tornado.web import url
 
 from torn_open.web import Application, AnnotatedHandler
 from torn_open.models import RequestModel, ResponseModel
-from torn_open.api_spec_plugin import tags
+from torn_open.api_spec_plugin import tags, summary
 
 @pytest.fixture
 def app():
@@ -95,9 +95,15 @@ def app():
             pass
 
     class TaggedHTTPHandler(AnnotatedHandler):
-        @tags("this_is_a_tag")
+        @tags("tag_1", "tag_2")
         def get(self) -> MyResponseBody:
             pass
+
+    class SummaryHTTPHandler(AnnotatedHandler):
+        @summary("This is a summary")
+        def get(self) -> MyResponseBody:
+            pass
+
 
     return Application(
         [
@@ -121,6 +127,7 @@ def app():
             url(r"/request_body", RequestBodyHandler),
             url(r"/responses", ResponsesHandler),
             url(r"/tagged", TaggedHTTPHandler),
+            url(r"/summary", SummaryHTTPHandler),
         ]
     )
 
@@ -395,3 +402,13 @@ def test_has_components_schema(spec):
 def test_has_tags(paths):
     get_operation = paths["/tagged"]["get"]
     assert "tags" in get_operation
+
+    tags = get_operation["tags"] 
+    assert tags == ["tag_1", "tag_2"]
+
+def test_has_summary(paths):
+    get_operation = paths["/summary"]["get"]
+    assert "summary" in get_operation
+
+    summary = get_operation["summary"]
+    assert summary == "This is a summary"

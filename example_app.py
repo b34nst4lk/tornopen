@@ -4,7 +4,7 @@ from tornado.ioloop import IOLoop
 
 from torn_open.web import AnnotatedHandler, Application
 from torn_open.models import RequestModel, ResponseModel
-from torn_open.api_spec_plugin import tags
+from torn_open.api_spec_plugin import tags, summary
 
 class MyRequestModel(RequestModel):
     """
@@ -18,11 +18,12 @@ class MyResponseModel(ResponseModel):
     Docsting here will show up as description of the response on redoc
     """
     path_param: str
-    int_query_param: int
+    query_parm: int
     req_body: MyRequestModel
 
 class MyAnnotatedHandler(AnnotatedHandler):
-    @tags("this is a tag", "this is another tag")
+    @tags("tag_1", "tag_2")
+    @summary("this is a summary")
     def post(
         self,
         *,
@@ -35,7 +36,7 @@ class MyAnnotatedHandler(AnnotatedHandler):
         """
         return MyResponseModel(
             path_param=path_param,
-            int_query_param=int_query_param,
+            query_param=query_param,
             str_enum_param=str_enum_param,
             req_body=req_body,
         )
