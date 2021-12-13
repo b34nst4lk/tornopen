@@ -85,7 +85,7 @@ class AnnotatedHandler(tornado.web.RequestHandler):
         is_path_param = param_name in cls.path_params
         is_self = param_name == "self"
         is_class = inspect.isclass(parameter.annotation)
-        
+
         if not is_annotated:
             return False
         if is_self:
@@ -119,7 +119,7 @@ class AnnotatedHandler(tornado.web.RequestHandler):
         is_path_param = param_name in cls.path_params
         is_self = param_name == "self"
         is_class = inspect.isclass(parameter.annotation)
- 
+
         if not is_annotated:
             return False
         if is_self:

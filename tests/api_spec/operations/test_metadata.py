@@ -1,13 +1,14 @@
 from enum import Enum
-from typing import Optional, List
+from typing import Optional
 
 import pytest
 
 from tornado.web import url
 
 from torn_open.web import Application, AnnotatedHandler
-from torn_open.models import RequestModel, ResponseModel
+from torn_open.models import ResponseModel
 from torn_open.api_spec_plugin import tags, summary
+
 
 @pytest.fixture
 def app():
@@ -38,7 +39,6 @@ def app():
         def get(self) -> MyResponseBody:
             pass
 
-
     return Application(
         [
             url(r"/description", MethodDescriptionHandler),
@@ -46,6 +46,7 @@ def app():
             url(r"/summary", SummaryHTTPHandler),
         ]
     )
+
 
 @pytest.fixture
 def spec(app):
@@ -55,6 +56,7 @@ def spec(app):
 @pytest.fixture
 def paths(spec):
     return spec["paths"]
+
 
 def test_description(paths):
     operations = paths["/description"]
@@ -66,12 +68,14 @@ def test_description(paths):
     description = operation["description"]
     assert description == "This is the documentation for the get function"
 
+
 def test_has_tags(paths):
     get_operation = paths["/tagged"]["get"]
     assert "tags" in get_operation
 
-    tags = get_operation["tags"] 
+    tags = get_operation["tags"]
     assert tags == ["tag_1", "tag_2"]
+
 
 def test_has_summary(paths):
     get_operation = paths["/summary"]["get"]

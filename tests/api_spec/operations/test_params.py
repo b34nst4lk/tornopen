@@ -6,8 +6,7 @@ import pytest
 from tornado.web import url
 
 from torn_open.web import Application, AnnotatedHandler
-from torn_open.models import RequestModel, ResponseModel
-from torn_open.api_spec_plugin import tags, summary
+
 
 @pytest.fixture
 def app():

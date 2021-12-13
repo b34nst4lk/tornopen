@@ -6,20 +6,25 @@ from torn_open.web import AnnotatedHandler, Application
 from torn_open.models import RequestModel, ResponseModel
 from torn_open.api_spec_plugin import tags, summary
 
+
 class MyRequestModel(RequestModel):
     """
     Docsting here will show up as description of the request model on redoc
     """
+
     var1: str
     var2: int
+
 
 class MyResponseModel(ResponseModel):
     """
     Docsting here will show up as description of the response on redoc
     """
+
     path_param: str
     query_parm: int
     req_body: MyRequestModel
+
 
 class MyAnnotatedHandler(AnnotatedHandler):
     @tags("tag_1", "tag_2")
@@ -37,9 +42,9 @@ class MyAnnotatedHandler(AnnotatedHandler):
         return MyResponseModel(
             path_param=path_param,
             query_param=query_param,
-            str_enum_param=str_enum_param,
             req_body=req_body,
         )
+
 
 def make_app():
     return Application(
@@ -47,6 +52,7 @@ def make_app():
             url(r"/annotated/(?P<path_param>[^/]+)", MyAnnotatedHandler),
         ],
     )
+
 
 if __name__ == "__main__":
     app = make_app()

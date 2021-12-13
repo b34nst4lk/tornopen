@@ -1,13 +1,13 @@
 from enum import Enum
-from typing import Optional, List
+from typing import Optional
 
 import pytest
 
 from tornado.web import url
 
 from torn_open.web import Application, AnnotatedHandler
-from torn_open.models import RequestModel, ResponseModel
-from torn_open.api_spec_plugin import tags, summary
+from torn_open.models import RequestModel
+
 
 @pytest.fixture
 def app():
@@ -31,6 +31,7 @@ def app():
         ]
     )
 
+
 @pytest.fixture
 def spec(app):
     return app.api_spec.to_dict()
@@ -39,6 +40,7 @@ def spec(app):
 @pytest.fixture
 def paths(spec):
     return spec["paths"]
+
 
 def test_request_model(paths):
     operations = paths["/request_body"]

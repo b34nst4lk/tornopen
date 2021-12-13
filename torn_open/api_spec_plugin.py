@@ -38,6 +38,7 @@ class TornOpenAPISpec(APISpec):
         for plugin in self.plugins:
             plugin.init_spec(self)
 
+
 class TornOpenPlugin(BasePlugin):
     """APISpec plugin for Tornado"""
 
@@ -131,6 +132,7 @@ def _get_type(annotation):
     if not isinstance(annotation, type) and is_optional(annotation.__args__):
         return _get_type(annotation.__args__[0])
 
+
 def _get_item_type(annotation):
     if len(annotation.__args__) == 1:
         item_type = _get_type(annotation.__args__[0])
@@ -214,6 +216,7 @@ def Operation(method: str, url_spec, components):
     operation = _clear_none_from_dict(operation)
     return operation
 
+
 def _get_tags(method, url_spec):
     handler = url_spec.handler_class
     method = getattr(handler, method, None)
@@ -221,12 +224,14 @@ def _get_tags(method, url_spec):
         return None
     return getattr(method, "_openapi_tags", None)
 
+
 def _get_summary(method, url_spec):
     handler = url_spec.handler_class
     method = getattr(handler, method, None)
     if method is handler._unimplemented_method:
         return None
     return getattr(method, "_openapi_summary", None)
+
 
 def _get_operation_description(method: str, url_spec):
     handler = url_spec.handler_class
@@ -340,6 +345,7 @@ def tags(*tag_list):
 
     return decorator
 
+
 def summary(summary_text):
     def decorator(func):
         func._openapi_summary = summary_text
@@ -351,6 +357,7 @@ def summary(summary_text):
         return wrapper
 
     return decorator
+
 
 def _is_implemented(method, handler):
     return getattr(handler, method) is not handler._unimplemented_method

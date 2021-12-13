@@ -33,6 +33,7 @@ OptionalType = Optional[type]
 OptionalList = Optional[List]
 GenericAliases = (_SpecialGenericAlias, _GenericAlias)
 
+
 def is_optional(parameter_type: Union[type, Tuple[type]]):
     if getattr(parameter_type, "__origin__", None) == Union:
         parameter_type = parameter_type.__args__
@@ -40,16 +41,19 @@ def is_optional(parameter_type: Union[type, Tuple[type]]):
         return type(None) in parameter_type
     return False
 
+
 def is_list(parameter_type):
     if parameter_type is list:
         return True
-    if isinstance(parameter_type, GenericAliases) and parameter_type.__origin__ in (list, List):
+    if isinstance(parameter_type, GenericAliases) and parameter_type.__origin__ in (
+        list,
+        List,
+    ):
         return True
     return False
 
-def cast(
-    parameter_type: Union[type, OptionalType, OptionalList], val: Any, name: str
-):
+
+def cast(parameter_type: Union[type, OptionalType, OptionalList], val: Any, name: str):
     # Retrieve type if parameter_type is optional
     if is_optional(parameter_type):
         parameter_type = parameter_type.__args__[0]

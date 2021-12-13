@@ -1,13 +1,13 @@
 from enum import Enum
-from typing import Optional, List
+from typing import Optional
 
 import pytest
 
 from tornado.web import url
 
 from torn_open.web import Application, AnnotatedHandler
-from torn_open.models import RequestModel, ResponseModel
-from torn_open.api_spec_plugin import tags, summary
+from torn_open.models import ResponseModel
+
 
 @pytest.fixture
 def app():
@@ -31,6 +31,7 @@ def app():
         ]
     )
 
+
 @pytest.fixture
 def spec(app):
     return app.api_spec.to_dict()
@@ -39,6 +40,7 @@ def spec(app):
 @pytest.fixture
 def paths(spec):
     return spec["paths"]
+
 
 def test_response_model(paths):
     operations = paths["/responses"]
@@ -53,6 +55,7 @@ def test_response_model(paths):
     success_response = responses["200"]
     assert "description" in success_response
 
+
 def test_no_definition_in_schema(paths):
     content = paths["/responses"]["post"]["responses"]["200"]["content"]
     schema = content["application/json"]["schema"]
@@ -62,5 +65,3 @@ def test_no_definition_in_schema(paths):
 def test_has_components_schema(spec):
     assert "components" in spec
     assert "schemas" in spec["components"]
-
-

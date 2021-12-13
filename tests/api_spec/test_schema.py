@@ -8,6 +8,7 @@ from torn_open.models import RequestModel, ResponseModel
 
 # from tests.api_spec.schema_util import SharedSchema1Handler
 
+
 @pytest.fixture
 def app():
     class NestedModel(BaseModel):
@@ -39,6 +40,7 @@ def app():
 @pytest.fixture
 def spec(app):
     return app.api_spec.to_dict()
+
 
 def test_shared_schema(spec):
     # This test should fail if APISpec is unable to handle models shared by multiple handlers
