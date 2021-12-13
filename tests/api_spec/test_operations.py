@@ -7,7 +7,7 @@ from tornado.web import url
 
 from torn_open.web import Application, AnnotatedHandler
 from torn_open.models import RequestModel, ResponseModel
-
+from torn_open.api_spec_plugin import tags
 
 @pytest.fixture
 def app():
@@ -94,6 +94,11 @@ def app():
         def post(self) -> MyResponseBody:
             pass
 
+    class TaggedHTTPHandler(AnnotatedHandler):
+        @tags("this_is_a_tag")
+        def get(self) -> MyResponseBody:
+            pass
+
     return Application(
         [
             url(r"/str_query", QueryParamHandler),
@@ -115,6 +120,7 @@ def app():
             url(r"/description", MethodDescriptionHandler),
             url(r"/request_body", RequestBodyHandler),
             url(r"/responses", ResponsesHandler),
+            url(r"/tagged", TaggedHTTPHandler),
         ]
     )
 
@@ -385,3 +391,7 @@ def test_no_definition_in_schema(paths):
 def test_has_components_schema(spec):
     assert "components" in spec
     assert "schemas" in spec["components"]
+
+def test_has_tags(paths):
+    get_operation = paths["/tagged"]["get"]
+    assert "tags" in get_operation

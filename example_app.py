@@ -4,6 +4,7 @@ from tornado.ioloop import IOLoop
 
 from torn_open.web import AnnotatedHandler, Application
 from torn_open.models import RequestModel, ResponseModel
+from torn_open.api_spec_plugin import tags
 
 class MyRequestModel(RequestModel):
     """
@@ -21,6 +22,7 @@ class MyResponseModel(ResponseModel):
     req_body: MyRequestModel
 
 class MyAnnotatedHandler(AnnotatedHandler):
+    @tags("this is a tag", "this is another tag")
     def post(
         self,
         *,
