@@ -22,25 +22,11 @@ def app():
         x = "x"
         y = "y"
 
-    class RequestBodyHandler(AnnotatedHandler):
-        class MyRequestBody(RequestModel):
-            x: str
-            y: int
-            a: MyEnum
-            z: Optional[str]
-
-        def post(self, request_body: MyRequestBody):
-            pass
-
     class MyResponseBody(ResponseModel):
         x: str
         y: int
         a: MyEnum
         z: Optional[str]
-
-    class ResponsesHandler(AnnotatedHandler):
-        def post(self) -> MyResponseBody:
-            pass
 
     class TaggedHTTPHandler(AnnotatedHandler):
         @tags("tag_1", "tag_2")
@@ -56,8 +42,6 @@ def app():
     return Application(
         [
             url(r"/description", MethodDescriptionHandler),
-            url(r"/request_body", RequestBodyHandler),
-            url(r"/responses", ResponsesHandler),
             url(r"/tagged", TaggedHTTPHandler),
             url(r"/summary", SummaryHTTPHandler),
         ]
@@ -81,43 +65,6 @@ def test_description(paths):
 
     description = operation["description"]
     assert description == "This is the documentation for the get function"
-
-
-def test_request_model(paths):
-    operations = paths["/request_body"]
-    assert "post" in operations
-
-    operation = operations["post"]
-    assert "requestBody" in operation
-    request_body = operation["requestBody"]
-    assert "content" in request_body
-    assert "application/json" in request_body["content"]
-    assert "schema" in request_body["content"]["application/json"]
-
-
-def test_response_model(paths):
-    operations = paths["/responses"]
-    assert "post" in operations
-
-    operation = operations["post"]
-    assert "responses" in operation
-
-    responses = operation["responses"]
-    assert "200" in responses
-
-    success_response = responses["200"]
-    assert "description" in success_response
-
-
-def test_no_definition_in_schema(paths):
-    content = paths["/responses"]["post"]["responses"]["200"]["content"]
-    schema = content["application/json"]["schema"]
-    assert "definitions" not in schema
-
-
-def test_has_components_schema(spec):
-    assert "components" in spec
-    assert "schemas" in spec["components"]
 
 def test_has_tags(paths):
     get_operation = paths["/tagged"]["get"]
