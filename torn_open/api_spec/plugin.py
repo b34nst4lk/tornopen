@@ -1,7 +1,6 @@
 from collections import OrderedDict
 from typing import List
 from enum import EnumMeta
-from functools import wraps
 import inspect
 
 from apispec import BasePlugin, APISpec
@@ -47,7 +46,7 @@ class TornOpenPlugin(BasePlugin):
 
     def path_helper(self, *, url_spec, parameters, **_):
         path = get_path(url_spec)
-        parameters.extend(get_path_params(url_spec))
+        parameters.extend(get_path_params(url_spec.handler_class))
         return path
 
     def operation_helper(self, *, operations, url_spec, **_):
@@ -84,8 +83,7 @@ def right_strip_path(path):
 
 
 # Path params
-def get_path_params(url_spec):
-    handler = url_spec.handler_class
+def get_path_params(handler):
     path_params = handler.path_params
     parameters = [PathParameter(parameter) for parameter in path_params.values()]
     return parameters
@@ -101,13 +99,8 @@ def _get_type_of_enum_value(enum_meta: EnumMeta):
         return type(enum_item)
 
 
-def _get_default_value_of_parameter(parameter: inspect.Parameter):
-    annotation = parameter.annotation
-    default = parameter.default if parameter.default is not inspect._empty else None
-    return default.value if default and isinstance(annotation, EnumMeta) else default
 
-
-def _get_type(annotation):
+def _get_type_to_openapi_type_mapping(annotation):
     types_mapping = {
         str: "string",
         int: "integer",
@@ -119,32 +112,32 @@ def _get_type(annotation):
         return types_mapping[annotation]
 
     if is_optional(annotation):
-        return _get_type(annotation.__args__[0])
+        return _get_type_to_openapi_type_mapping(annotation.__args__[0])
 
     if isinstance(annotation, EnumMeta):
         annotation = _get_type_of_enum_value(annotation)
-        return _get_type(annotation)
+        return _get_type_to_openapi_type_mapping(annotation)
 
     if is_list(annotation):
         annotation = annotation.__origin__
-        return _get_type(annotation)
+        return _get_type_to_openapi_type_mapping(annotation)
 
     if not isinstance(annotation, type) and is_optional(annotation.__args__):
-        return _get_type(annotation.__args__[0])
+        return _get_type_to_openapi_type_mapping(annotation.__args__[0])
 
 
 def _get_item_type(annotation):
     if len(annotation.__args__) == 1:
-        item_type = _get_type(annotation.__args__[0])
+        item_type = _get_type_to_openapi_type_mapping(annotation.__args__[0])
     elif is_optional(annotation):
-        item_type = _get_type(annotation.__args__[0].__args__[0])
+        item_type = _get_type_to_openapi_type_mapping(annotation.__args__[0].__args__[0])
     else:
         item_type = None
     return item_type
 
 
 def Items(annotation):
-    if _get_type(annotation) != "array":
+    if _get_type_to_openapi_type_mapping(annotation) != "array":
         return None
 
     item_type = _get_item_type(annotation)
@@ -153,14 +146,14 @@ def Items(annotation):
         "type": item_type,
     }
 
-
-def _get_type_of_optional_array(annotation):
-    return _get_type(annotation.__args__[0].__args__[0])
-
-
 def Schema(parameter: inspect.Parameter):
+    def _get_default_value_of_parameter(parameter: inspect.Parameter):
+        annotation = parameter.annotation
+        default = parameter.default if parameter.default is not inspect._empty else None
+        return default.value if default and isinstance(annotation, EnumMeta) else default
+
     annotation = parameter.annotation
-    _type = _get_type(annotation)
+    _type = _get_type_to_openapi_type_mapping(annotation)
     _enum = [*_unpack_enum(annotation)] if isinstance(annotation, EnumMeta) else None
     default = _get_default_value_of_parameter(parameter)
     items = Items(annotation)
@@ -196,70 +189,59 @@ def Parameter(parameter: inspect.Parameter, param_type, required: bool = None):
 
 # Operations helper methods
 def Operations(url_spec, components):
-    implemented_methods = _get_implemented_http_methods(url_spec)
+    def _get_implemented_http_methods(handler):
+        return [
+            method.lower()
+            for method in handler.SUPPORTED_METHODS
+            if _is_implemented(method.lower(), handler)
+        ]
+
+    handler = url_spec.handler_class
+    implemented_methods = _get_implemented_http_methods(handler)
     operations = {
-        method: Operation(method, url_spec, components)
+        method: Operation(method, handler, components)
         for method in implemented_methods
     }
     return operations
 
 
-def Operation(method: str, url_spec, components):
+def Operation(method: str, handler, components):
+    def _get_tags(method, handler):
+        method = getattr(handler, method, None)
+        if method is handler._unimplemented_method:
+            return None
+        return getattr(method, "_openapi_tags", None)
+
+    def _get_summary(method, handler):
+        method = getattr(handler, method, None)
+        if method is handler._unimplemented_method:
+            return None
+        return getattr(method, "_openapi_summary", None)
+
+    def _get_query_params(method, handler):
+        parameters = handler.query_params[method].values()
+        return [QueryParameter(parameter) for parameter in parameters]
+
+    def _get_operation_description(method: str, handler):
+        description = getattr(handler, method).__doc__
+        description = description.strip() if description else description
+        return description
+
     operation = {
-        "tags": _get_tags(method, url_spec),
-        "summary": _get_summary(method, url_spec),
-        "parameters": _get_query_params(method, url_spec),
-        "description": _get_operation_description(method, url_spec),
-        "requestBody": RequestBody(method, url_spec),
-        "responses": Responses(method, url_spec, components),
+        "tags": _get_tags(method, handler),
+        "summary": _get_summary(method, handler),
+        "parameters": _get_query_params(method, handler),
+        "description": _get_operation_description(method, handler),
+        "requestBody": RequestBody(method, handler),
+        "responses": Responses(method, handler, components),
     }
     operation = _clear_none_from_dict(operation)
     return operation
 
-
-def _get_tags(method, url_spec):
-    handler = url_spec.handler_class
-    method = getattr(handler, method, None)
-    if method is handler._unimplemented_method:
-        return None
-    return getattr(method, "_openapi_tags", None)
-
-
-def _get_summary(method, url_spec):
-    handler = url_spec.handler_class
-    method = getattr(handler, method, None)
-    if method is handler._unimplemented_method:
-        return None
-    return getattr(method, "_openapi_summary", None)
-
-
-def _get_operation_description(method: str, url_spec):
-    handler = url_spec.handler_class
-    description = getattr(handler, method).__doc__
-    description = description.strip() if description else description
-    return description
-
-
-def _get_query_params(method, url_spec):
-    handler = url_spec.handler_class
-    parameters = handler.query_params[method].values()
-    return [QueryParameter(parameter) for parameter in parameters]
-
-
-def _get_implemented_http_methods(url_spec):
-    handler = url_spec.handler_class
-    return [
-        method.lower()
-        for method in handler.SUPPORTED_METHODS
-        if _is_implemented(method.lower(), handler)
-    ]
-
-
 SCHEMA_REF_TEMPLATE = "#/components/schemas/{model}"
 
 
-def RequestBody(method: str, url_spec):
-    handler = url_spec.handler_class
+def RequestBody(method: str, handler):
     json_param = handler.json_param[method]
     if not json_param:
         return None
@@ -271,12 +253,39 @@ def RequestBodySchema(parameter):
     return parameter.annotation.schema(ref_template=SCHEMA_REF_TEMPLATE)
 
 
-def Responses(method, url_spec, components):
-    return {"200": SuccessResponse(method, url_spec, components)}
+def Responses(method, handler, components):
+    return {"200": SuccessResponse(method, handler, components)}
 
 
-def SuccessResponse(method, url_spec, components):
-    response_model = url_spec.handler_class.response_models[method]
+def SuccessResponse(method, handler, components):
+    def get_success_response_description(response_model):
+        TEMPLATE_RESPONSE_DESCRIPTION = '''
+        Include a `torn_open.models.ResponseModel` annotation with documentation to overwrite this default description.
+
+        Example
+        ```python
+        from torn_open.web import AnnotatedHandler
+        from torn_open.models import ResponseModel
+
+        class MyResponseModel(ResponseModel):
+            """
+            Successfully retrieved my response model
+            """
+            spam: str
+            ham: int
+
+        class MyHandler(AnnotatedHandler):
+            async def get(self) -> MyResponseModel:
+                pass
+
+        ```
+        '''
+        description = TEMPLATE_RESPONSE_DESCRIPTION.strip()
+        if response_model and response_model.__doc__:
+            description = response_model.__doc__.strip()
+        return description
+
+    response_model = handler.response_models[method]
     return {
         "description": get_success_response_description(response_model),
         "content": {
@@ -285,35 +294,6 @@ def SuccessResponse(method, url_spec, components):
             }
         },
     }
-
-
-def get_success_response_description(response_model):
-    TEMPLATE_RESPONSE_DESCRIPTION = '''
-    Include a `torn_open.models.ResponseModel` annotation with documentation to overwrite this default description.
-
-    Example
-    ```python
-    from torn_open.web import AnnotatedHandler
-    from torn_open.models import ResponseModel
-
-    class MyResponseModel(ResponseModel):
-        """
-        Successfully retrieved my response model
-        """
-        spam: str
-        ham: int
-
-    class MyHandler(AnnotatedHandler):
-        async def get(self) -> MyResponseModel:
-            pass
-
-    ```
-    '''
-    description = TEMPLATE_RESPONSE_DESCRIPTION.strip()
-    if response_model and response_model.__doc__:
-        description = response_model.__doc__.strip()
-    return description
-
 
 def SuccessResponseModelSchema(response_model, components):
     schema = (
@@ -333,32 +313,7 @@ def SuccessResponseModelSchema(response_model, components):
     return schema
 
 
-def tags(*tag_list):
-    def decorator(func):
-        func._openapi_tags = [*tag_list]
-
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-
-        return wrapper
-
-    return decorator
-
-
-def summary(summary_text):
-    def decorator(func):
-        func._openapi_summary = summary_text
-
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-
-        return wrapper
-
-    return decorator
-
-
+# utils
 def _is_implemented(method, handler):
     return getattr(handler, method) is not handler._unimplemented_method
 

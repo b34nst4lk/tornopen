@@ -26,7 +26,7 @@ import pydantic
 from torn_open import types
 from torn_open import models
 
-from torn_open.api_spec_plugin import TornOpenPlugin, TornOpenAPISpec
+from torn_open.api_spec import TornOpenPlugin, TornOpenAPISpec
 
 
 class AnnotatedHandler(tornado.web.RequestHandler):

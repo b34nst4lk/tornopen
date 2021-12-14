@@ -4,7 +4,7 @@ from tornado.ioloop import IOLoop
 
 from torn_open.web import AnnotatedHandler, Application
 from torn_open.models import RequestModel, ResponseModel
-from torn_open.api_spec_plugin import tags, summary
+from torn_open.api_spec.plugin import tags, summary
 
 
 class MyRequestModel(RequestModel):
