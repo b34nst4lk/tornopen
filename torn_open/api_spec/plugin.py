@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import List
+from typing import List, Dict
 from enum import EnumMeta
 import inspect
 
@@ -8,6 +8,8 @@ from apispec.core import Components
 from apispec.utils import OpenAPIVersion
 
 from torn_open.types import is_optional, is_list
+from torn_open.models import ClientError, ServerError
+from torn_open.api_spec.exception_finder import get_exceptions
 
 
 class TornOpenComponents(Components):
@@ -99,7 +101,6 @@ def _get_type_of_enum_value(enum_meta: EnumMeta):
         return type(enum_item)
 
 
-
 def _get_type_to_openapi_type_mapping(annotation):
     types_mapping = {
         str: "string",
@@ -130,7 +131,9 @@ def _get_item_type(annotation):
     if len(annotation.__args__) == 1:
         item_type = _get_type_to_openapi_type_mapping(annotation.__args__[0])
     elif is_optional(annotation):
-        item_type = _get_type_to_openapi_type_mapping(annotation.__args__[0].__args__[0])
+        item_type = _get_type_to_openapi_type_mapping(
+            annotation.__args__[0].__args__[0]
+        )
     else:
         item_type = None
     return item_type
@@ -146,11 +149,14 @@ def Items(annotation):
         "type": item_type,
     }
 
+
 def Schema(parameter: inspect.Parameter):
     def _get_default_value_of_parameter(parameter: inspect.Parameter):
         annotation = parameter.annotation
         default = parameter.default if parameter.default is not inspect._empty else None
-        return default.value if default and isinstance(annotation, EnumMeta) else default
+        return (
+            default.value if default and isinstance(annotation, EnumMeta) else default
+        )
 
     annotation = parameter.annotation
     _type = _get_type_to_openapi_type_mapping(annotation)
@@ -199,8 +205,7 @@ def Operations(url_spec, components):
     handler = url_spec.handler_class
     implemented_methods = _get_implemented_http_methods(handler)
     operations = {
-        method: Operation(method, handler, components)
-        for method in implemented_methods
+        method: Operation(method, handler, components) for method in implemented_methods
     }
     return operations
 
@@ -238,6 +243,7 @@ def Operation(method: str, handler, components):
     operation = _clear_none_from_dict(operation)
     return operation
 
+
 SCHEMA_REF_TEMPLATE = "#/components/schemas/{model}"
 
 
@@ -254,7 +260,10 @@ def RequestBodySchema(parameter):
 
 
 def Responses(method, handler, components):
-    return {"200": SuccessResponse(method, handler, components)}
+    return {
+        200: SuccessResponse(method, handler, components),
+        **_get_failure_responses(method, handler),
+    }
 
 
 def SuccessResponse(method, handler, components):
@@ -295,6 +304,7 @@ def SuccessResponse(method, handler, components):
         },
     }
 
+
 def SuccessResponseModelSchema(response_model, components):
     schema = (
         response_model.schema(ref_template=SCHEMA_REF_TEMPLATE)
@@ -311,6 +321,60 @@ def SuccessResponseModelSchema(response_model, components):
     for referenced_schema_id, referenced_schema in referenced_schemas.items():
         components.schema(referenced_schema_id, referenced_schema)
     return schema
+
+
+def _get_failure_responses(method, handler) -> Dict[str, dict]:
+    http_method = getattr(handler, method, None)
+    exceptions = _retrieve_exceptions(http_method)
+    return FailedResponses(exceptions)
+
+
+def _retrieve_exceptions(http_method):
+    error_codes_and_types = {}
+    for exception_class, _, kwargs in get_exceptions(http_method):
+        if exception_class not in (ClientError, ServerError):
+            continue
+        status_code = kwargs["status_code"]
+        error_types = error_codes_and_types.get(status_code, [])
+        error_types.append(kwargs["error_type"])
+        error_codes_and_types[status_code] = error_types
+    return error_codes_and_types
+
+
+def FailedResponses(exceptions):
+    failed_responses = {}
+    for status_code, error_types in exceptions.items():
+        failed_responses[status_code] = FailedResponse(error_types)
+    return failed_responses
+
+
+def FailedResponse(error_types):
+    return {
+        "description": "|".join(error_types),
+        "content": {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "status_code": {
+                            "type": "number",
+                        },
+                        "type": {
+                            "type": "string",
+                            "enum": error_types,
+                        },
+                        "message": {
+                            "type": "string",
+                        },
+                    },
+                    "required": [
+                        "status_code",
+                        "type",
+                    ],
+                }
+            }
+        },
+    }
 
 
 # utils

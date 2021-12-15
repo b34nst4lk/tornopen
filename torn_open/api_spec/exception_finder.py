@@ -12,7 +12,16 @@ class _ExceptionsFinder(ast.NodeTransformer):
         self.nodes.append(node.exc)
 
 
+def _get_wrapped_function(func):
+    if "__wrapped__" in func.__dict__:
+        func = func.__dict__["__wrapped__"]
+        return _get_wrapped_function(func)
+    return func
+
+
 def get_exceptions(func):
+    func = _get_wrapped_function(func)
+
     try:
         vars = ChainMap(*getclosurevars(func)[:3])
         source = dedent(getsource(func))
@@ -21,16 +30,23 @@ def get_exceptions(func):
 
     v = _ExceptionsFinder()
     v.visit(ast.parse(source))
+    results = []
     for node in v.nodes:
         if not isinstance(node, (ast.Call, ast.Name)):
             continue
 
         name = node.id if isinstance(node, ast.Name) else node.func.id
         if name in vars:
-            kwargs = {keyword.arg: parse_keyword_value(keyword.value) for keyword in node.keywords}
-            yield vars[name], node.args, kwargs
+            args = [parse_constant_value(arg) for arg in node.args]
+            kwargs = {
+                keyword.arg: parse_constant_value(keyword.value)
+                for keyword in node.keywords
+            }
+            yield vars[name], args, kwargs
+            results.append((vars[name], args, kwargs))
 
-def parse_keyword_value(keyword_value):
+
+def parse_constant_value(keyword_value):
     if hasattr(keyword_value, "value"):
         return keyword_value.value
     elif hasattr(keyword_value, "n"):

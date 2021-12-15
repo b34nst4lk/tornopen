@@ -37,5 +37,3 @@ class ServerError(HTTPJsonError):
         if status_code < 500 or status_code > 599:
             raise ValueError(f"invalid {status_code} for ClientError")
         super().__init__(status_code, error_type, message)
-
-

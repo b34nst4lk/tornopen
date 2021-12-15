@@ -1,5 +1,6 @@
 from functools import wraps
 
+
 # Decorators
 def tags(*tag_list):
     def decorator(func):
