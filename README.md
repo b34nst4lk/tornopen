@@ -1,41 +1,51 @@
 # TornOpen 
 
-TornOpen is an extension of [Tornado] that relies on both native type annotation and [pydantic] to generate [OpenAPI] compliant documentation on [Redoc]
+TornOpen is an extension of [Tornado] that relies on both Python's type annotation and [pydantic] to generate [OpenAPI] compliant documentation using [apispec] for [Redoc]
 
----
 ## Requirements
 - Python >= 3.6
-- [Tornado] >= 6.1 
-- [pydantic] >= 1.7.3
 
----
 ## Installation
-__coming Soon__
 
----
+```
+pip install torn-open
+```
+
 ## Usage
 
+### Example Code
 ```python
 from typing import Optional
 from tornado.web import url
 from tornado.ioloop import IOLoop
 
 from torn_open.web import AnnotatedHandler, Application
-from torn_open.models import RequestModel, ResponseModel
+from torn_open.models import RequestModel, ResponseModel, ClientError
+from torn_open.api_spec import tags, summary
+
 
 class MyRequestModel(RequestModel):
+    """
+    Docsting here will show up as description of the request model on redoc
+    """
+
     var1: str
     var2: int
+
 
 class MyResponseModel(ResponseModel):
     """
     Docsting here will show up as description of the response on redoc
     """
+
     path_param: str
-    int_query_param: int
+    query_parm: int
     req_body: MyRequestModel
 
+
 class MyAnnotatedHandler(AnnotatedHandler):
+    @tags("tag_1", "tag_2")
+    @summary("this is a summary")
     def post(
         self,
         *,
@@ -46,12 +56,16 @@ class MyAnnotatedHandler(AnnotatedHandler):
         """
         Docstrings will show up as descriptions on redoc
         """
+        try:
+            """do something here"""
+        except:
+            raise ClientError(status_code=403, error_type="forbiddon")
         return MyResponseModel(
             path_param=path_param,
-            int_query_param=int_query_param,
-            str_enum_param=str_enum_param,
+            query_param=query_param,
             req_body=req_body,
         )
+
 
 def make_app():
     return Application(
@@ -60,21 +74,23 @@ def make_app():
         ],
     )
 
+
 if __name__ == "__main__":
     app = make_app()
     app.listen(8888)
     IOLoop.current().start()
 ```
 
-![Redoc Output](/example_redoc.png)
-
----
+### Result
+![](https://github.com/b34nst4lk/tornopen/raw/master/example_redoc.png)
 
 ## Acknowledgements
 - [FastAPI]
 - [Redoc]
 - [pydantic]
 
+
+[apispec]: https://github.com/marshmallow-code/apispec
 [FastAPI]: https://github.com/tiangolo/fastapi
 [OpenAPI]: https://github.com/OAI/OpenAPI-Specification
 [Redoc]: https://github.com/Redocly/redoc
