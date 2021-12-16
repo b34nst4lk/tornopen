@@ -211,15 +211,15 @@ def Operations(url_spec, components):
 
 
 def Operation(method: str, handler, components):
-    def _get_tags(method, handler):
-        method = getattr(handler, method, None)
-        if method is handler._unimplemented_method:
+    def _get_tags(http_method, handler):
+        method = getattr(handler, http_method, None)
+        if not _is_implemented(http_method, handler):
             return None
         return getattr(method, "_openapi_tags", None)
 
-    def _get_summary(method, handler):
-        method = getattr(handler, method, None)
-        if method is handler._unimplemented_method:
+    def _get_summary(http_method, handler):
+        method = getattr(handler, http_method, None)
+        if not _is_implemented(http_method, handler):
             return None
         return getattr(method, "_openapi_summary", None)
 
@@ -379,7 +379,7 @@ def FailedResponse(error_types):
 
 # utils
 def _is_implemented(method, handler):
-    return getattr(handler, method) is not handler._unimplemented_method
+    return getattr(handler, method) is not getattr(handler.__bases__[0], method)
 
 
 def _clear_none_from_dict(dictionary):

@@ -53,7 +53,7 @@ class AnnotatedHandler(tornado.web.RequestHandler):
         for http_method in cls.SUPPORTED_METHODS:
             http_method = http_method.lower()
             method = getattr(cls, http_method)
-            if method is cls._unimplemented_method:
+            if method is getattr(super(), http_method):
                 continue
 
             cls._set_path_param_names(method, rule)
@@ -339,7 +339,7 @@ class RedocHandler(tornado.web.RequestHandler):
 class Application(tornado.web.Application):
     def __init__(
         self,
-        bindings: tornado.routing._RuleList,
+        bindings,
         **kwargs,
     ):
         self._check_bindings(bindings)
@@ -349,7 +349,7 @@ class Application(tornado.web.Application):
 
     def _check_bindings(
         self,
-        bindings: tornado.routing._RuleList,
+        bindings,
     ):
         for binding in bindings:
             rule, handler_class = self._unpack_binding(binding)
@@ -371,7 +371,7 @@ class Application(tornado.web.Application):
         )
         assert not is_using_positional_path_args, msg
 
-    def _set_params_to_handlers(self, bindings: tornado.routing._RuleList):
+    def _set_params_to_handlers(self, bindings):
         for binding in bindings:
             rule, handler_class = self._unpack_binding(binding)
             if not issubclass(handler_class, AnnotatedHandler):
