@@ -2,8 +2,10 @@
 
 TornOpen is an extension of [Tornado] that relies on both Python's type annotation and [pydantic] to generate [OpenAPI] compliant documentation using [apispec] for [Redoc]
 
-## Requirements
-- Python >= 3.6
+## Supports
+ 
+- For Python versions 3.6 to 3.9, Tornado versions 4.5 to 6.1 are supported
+- For Python version 3.10, Tornado versions 6.0 to 6.1 are supported
 
 ## Installation
 
