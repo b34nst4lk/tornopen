@@ -6,6 +6,7 @@ from torn_open.web import AnnotatedHandler, Application
 from torn_open.models import RequestModel, ResponseModel, ClientError
 from torn_open.api_spec import tags, summary
 
+
 class MyRequestModel(RequestModel):
     """
     Docsting here will show up as description of the request model on redoc
@@ -47,6 +48,7 @@ class MyAnnotatedHandler(AnnotatedHandler):
             query_param=query_param,
             req_body=req_body,
         )
+
 
 def make_app():
     return Application(
