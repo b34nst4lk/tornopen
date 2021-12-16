@@ -228,7 +228,6 @@ async def test_calling_optional_int_query_param_handler(http_client, base_url):
         raise_error=False,
     )
     assert response.body is not None
-    print(response.body)
     body = json.loads(response.body)
     assert body["query_param"] == 1
     assert response.code == 200
@@ -243,7 +242,6 @@ async def test_calling_required_float_query_param_handler(http_client, base_url)
         raise_error=False,
     )
     assert response.body is not None
-    print(response.body)
     body = json.loads(response.body)
     assert body["query_param"] == 1.2
     assert response.code == 200
