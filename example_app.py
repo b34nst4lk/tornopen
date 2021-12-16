@@ -5,9 +5,6 @@ from tornado.ioloop import IOLoop
 from torn_open.web import AnnotatedHandler, Application
 from torn_open.models import RequestModel, ResponseModel, ClientError
 from torn_open.api_spec import tags, summary
-from torn_open.api_spec.exception_finder import get_exceptions
-
-import logging
 
 class MyRequestModel(RequestModel):
     """
@@ -41,7 +38,10 @@ class MyAnnotatedHandler(AnnotatedHandler):
         """
         Docstrings will show up as descriptions on redoc
         """
-        raise ClientError(status_code=403, error_type="forbiddon")
+        try:
+            """do something here"""
+        except:
+            raise ClientError(status_code=403, error_type="forbiddon")
         return MyResponseModel(
             path_param=path_param,
             query_param=query_param,
