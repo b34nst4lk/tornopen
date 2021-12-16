@@ -2,9 +2,15 @@ from typing import Optional
 from tornado.web import url
 from tornado.ioloop import IOLoop
 
-from torn_open.web import AnnotatedHandler, Application
-from torn_open.models import RequestModel, ResponseModel, ClientError
-from torn_open.api_spec import tags, summary
+from torn_open import (
+    AnnotatedHandler,
+    Application,
+    RequestModel,
+    ResponseModel,
+    ClientError,
+    tags,
+    summary,
+)
 
 
 class MyRequestModel(RequestModel):
