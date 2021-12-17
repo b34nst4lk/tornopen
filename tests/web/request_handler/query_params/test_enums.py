@@ -69,6 +69,7 @@ def app():
         ]
     )
 
+
 @pytest.mark.gen_test
 async def test_calling_required_enum_query_param_handler(http_client, base_url):
     params = {"query_param": "red"}
@@ -105,6 +106,7 @@ async def test_calling_optional_query_param(http_client, base_url):
     assert response.body is not None
     body = json.loads(response.body)
     assert body["query_param"] == "red"
+
 
 @pytest.mark.gen_test
 async def test_calling_required_int_enum_query_param_handler(http_client, base_url):

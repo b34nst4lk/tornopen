@@ -11,8 +11,6 @@ from typing import (
     Tuple,
 )
 
-from enum import EnumMeta
-
 import tornado.web
 import tornado.routing
 import tornado.iostream

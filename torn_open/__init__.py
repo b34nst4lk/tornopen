@@ -6,13 +6,11 @@ __all__ = [
     # Handler method decorators
     "tags",
     "summary",
-
     # Models
     "RequestModel",
     "ResponseModel",
     "ClientError",
     "ServerError",
-
     # Web
     "AnnotatedHandler",
     "Application",

@@ -50,8 +50,14 @@ def app():
             url(r"/cast/str/(?P<str_param>[^/]+)", TestCastToStrParamHandler),
             url(r"/cast/int/(?P<int_param>[^/]+)", TestCastToIntParamHandler),
             url(r"/cast/float/(?P<float_param>[^/]+)", TestCastToFloatParamHandler),
-            url(r"/cast/str_enum/(?P<str_enum_param>[^/]+)", TestCastToStrEnumParamHandler),
-            url(r"/cast/int_enum/(?P<int_enum_param>[^/]+)", TestCastToIntEnumParamHandler),
+            url(
+                r"/cast/str_enum/(?P<str_enum_param>[^/]+)",
+                TestCastToStrEnumParamHandler,
+            ),
+            url(
+                r"/cast/int_enum/(?P<int_enum_param>[^/]+)",
+                TestCastToIntEnumParamHandler,
+            ),
             url(r"/cast/list/(?P<list_param>[^/]+)", TestCastToListParamHandler),
         ]
     )
@@ -66,6 +72,7 @@ test_cases = [
     ("int_enum", "val1"),
     ("list", "val1,val2"),
 ]
+
 
 @pytest.mark.gen_test
 @pytest.mark.parametrize("cast_type,test_value", test_cases)

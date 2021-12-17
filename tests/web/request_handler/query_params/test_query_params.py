@@ -1,6 +1,5 @@
 import pytest
 import json
-from enum import Enum
 from typing import Optional, List
 
 from tornado.httputil import url_concat
@@ -433,6 +432,3 @@ async def test_calling_optional_query_param_with_default_handler(http_client, ba
     assert response.body is not None
     body = json.loads(response.body)
     assert body["query_param"] == "x"
-
-
-
