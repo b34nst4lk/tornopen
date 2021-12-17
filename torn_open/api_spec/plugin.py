@@ -1,43 +1,11 @@
-from collections import OrderedDict
 from typing import List, Dict
 from enum import EnumMeta
 import inspect
 
-from apispec import BasePlugin, APISpec
-from apispec.core import Components
-from apispec.utils import OpenAPIVersion
-
+from apispec import BasePlugin
 from torn_open.types import is_optional, is_list
 from torn_open.models import ClientError, ServerError
 from torn_open.api_spec.exception_finder import get_exceptions
-
-
-class TornOpenComponents(Components):
-    def schema(self, component_id, component, **kwargs):
-        if self.schemas.get(component_id) == component:
-            return self
-
-        super().schema(component_id, component, **kwargs)
-
-
-class TornOpenAPISpec(APISpec):
-    def __init__(self, title, version, openapi_version, plugins=(), **options):
-        self.title = title
-        self.version = version
-        self.openapi_version = OpenAPIVersion(openapi_version)
-        self.options = options
-        self.plugins = plugins
-
-        # Metadata
-        self._tags = []
-        self._paths = OrderedDict()
-
-        # Components
-        self.components = TornOpenComponents(self.plugins, self.openapi_version)
-
-        # Plugins
-        for plugin in self.plugins:
-            plugin.init_spec(self)
 
 
 class TornOpenPlugin(BasePlugin):
