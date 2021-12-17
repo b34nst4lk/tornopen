@@ -22,12 +22,6 @@ from typing import (
 from enum import EnumMeta
 
 import tornado.web
-import tornado.routing
-import tornado.iostream
-import tornado.concurrent
-import tornado.ioloop
-import tornado.options
-import tornado.log
 
 OptionalType = Optional[type]
 OptionalList = Optional[List]
@@ -66,7 +60,7 @@ def cast(parameter_type: Union[type, OptionalType, OptionalList], val: Any, name
 
     # Handle Enum params
     if isinstance(parameter_type, EnumMeta):
-        return check_enum(parameter_type, val, name)
+        return cast_enum(parameter_type, val, name)
 
     # Handle primitive params
     try:
@@ -81,11 +75,8 @@ def check_list(
     val_list: List = val.split(",")
     inner_type = parameter_type.__args__[0]
     if isinstance(inner_type, EnumMeta):
-        # Testing if the list comprises of valid enum values
-        check_enum_list(inner_type, val_list, name)
-    else:
-        val_list = cast_list(inner_type, val_list, name)
-    return val_list
+        return cast_enum_list(inner_type, val_list, name)
+    return cast_list(inner_type, val_list, name)
 
 
 def cast_list(parameter_type: type, val: List, name: str):
@@ -95,14 +86,12 @@ def cast_list(parameter_type: type, val: List, name: str):
         raise tornado.web.HTTPError(400, f"invalid type {val} for parameter {name}")
 
 
-def check_enum_list(enum: EnumMeta, val: List[Any], name: str):
-    [check_enum(enum, item, name) for item in val]
-    return val
+def cast_enum_list(enum: EnumMeta, val: List[Any], name: str):
+    return [cast_enum(enum, item, name) for item in val]
 
 
-def check_enum(enum: EnumMeta, val: Any, name: str):
+def cast_enum(enum: EnumMeta, val: Any, name: str):
     try:
-        enum[val]
-        return val
+        return enum[val]
     except KeyError:
         raise tornado.web.HTTPError(400, f"invalid value {val} for parameter {name}")

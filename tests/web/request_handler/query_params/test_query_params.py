@@ -58,54 +58,6 @@ def app():
         def get(self, query_param: Optional[str] = "x"):
             self.write({"query_param": query_param})
 
-    class RequiredEnumQueryParamHandler(AnnotatedHandler):
-        class EnumParam(str, Enum):
-            red = "red"
-            blue = "blue"
-
-        def get(self, query_param: EnumParam):
-            self.write({"query_param": query_param})
-
-    class OptionalEnumQueryParamHandler(AnnotatedHandler):
-        class EnumParam(str, Enum):
-            red = "red"
-            blue = "blue"
-
-        def get(self, query_param: Optional[EnumParam]):
-            self.write({"query_param": query_param})
-
-    class RequiredIntEnumQueryParamHandler(AnnotatedHandler):
-        class EnumParam(Enum):
-            red = 1
-            blue = 2
-
-        def get(self, query_param: EnumParam):
-            self.write({"query_param": query_param})
-
-    class OptionalIntEnumQueryParamHandler(AnnotatedHandler):
-        class EnumParam(Enum):
-            red = 1
-            blue = 2
-
-        def get(self, query_param: Optional[EnumParam]):
-            self.write({"query_param": query_param})
-
-    class RequiredEnumListQueryParamHandler(AnnotatedHandler):
-        class EnumParam(Enum):
-            red = 1
-            blue = 2
-
-        def get(self, query_param: List[EnumParam]):
-            self.write({"query_param": query_param})
-
-    class OptionalEnumListQueryParamHandler(AnnotatedHandler):
-        class EnumParam(Enum):
-            red = 1
-            blue = 2
-
-        def get(self, query_param: Optional[List[EnumParam]]):
-            self.write({"query_param": query_param})
-
     path_param_app = Application(
         [
             url(r"/required_query_param", RequiredQueryParamHandler),
@@ -126,12 +78,6 @@ def app():
                 r"/optional_query_with_default_param",
                 OptionalQueryParamWithDefaultHandler,
             ),
-            url(r"/required_enum_query_param", RequiredEnumQueryParamHandler),
-            url(r"/optional_enum_query_param", OptionalEnumQueryParamHandler),
-            url(r"/required_int_enum_query_param", RequiredIntEnumQueryParamHandler),
-            url(r"/optional_int_enum_query_param", OptionalIntEnumQueryParamHandler),
-            url(r"/required_enum_list_query_param", RequiredEnumListQueryParamHandler),
-            url(r"/optional_enum_list_query_param", OptionalEnumListQueryParamHandler),
         ]
     )
 
@@ -489,119 +435,4 @@ async def test_calling_optional_query_param_with_default_handler(http_client, ba
     assert body["query_param"] == "x"
 
 
-@pytest.mark.gen_test
-async def test_calling_required_enum_query_param_handler(http_client, base_url):
-    params = {"query_param": "red"}
-    url = url_concat(f"{base_url}/required_enum_query_param", params)
-    response = await http_client.fetch(
-        url,
-        raise_error=False,
-    )
-    assert response.body is not None
-    body = json.loads(response.body)
-    assert body["query_param"] == "red"
 
-
-@pytest.mark.gen_test
-async def test_calling_invalid_required_enum_query_param_handler(http_client, base_url):
-    params = {}
-    url = url_concat(f"{base_url}/required_enum_query_param", params)
-    response = await http_client.fetch(
-        url,
-        raise_error=False,
-    )
-    assert response.body is not None
-    assert response.code == 400
-
-
-@pytest.mark.gen_test
-async def test_calling_optional_query_param(http_client, base_url):
-    params = {"query_param": "red"}
-    url = url_concat(f"{base_url}/optional_enum_query_param", params)
-    response = await http_client.fetch(
-        url,
-        raise_error=False,
-    )
-    assert response.body is not None
-    body = json.loads(response.body)
-    assert body["query_param"] == "red"
-
-
-@pytest.mark.gen_test
-async def test_calling_required_int_enum_query_param_handler(http_client, base_url):
-    params = {"query_param": "red"}
-    url = url_concat(f"{base_url}/required_int_enum_query_param", params)
-    response = await http_client.fetch(
-        url,
-        raise_error=False,
-    )
-    assert response.body is not None
-    body = json.loads(response.body)
-    assert body["query_param"] == "red"
-
-
-@pytest.mark.gen_test
-async def test_calling_invalid_required_int_enum_query_param_handler(
-    http_client, base_url
-):
-    params = {}
-    url = url_concat(f"{base_url}/required_int_enum_query_param", params)
-    response = await http_client.fetch(
-        url,
-        raise_error=False,
-    )
-    assert response.body is not None
-    assert response.code == 400
-
-
-@pytest.mark.gen_test
-async def test_calling_optional_int_query_param(http_client, base_url):
-    params = {"query_param": "red"}
-    url = url_concat(f"{base_url}/optional_int_enum_query_param", params)
-    response = await http_client.fetch(
-        url,
-        raise_error=False,
-    )
-    assert response.body is not None
-    body = json.loads(response.body)
-    assert body["query_param"] == "red"
-
-
-@pytest.mark.gen_test
-async def test_calling_required_enum_list_query_param_handler(http_client, base_url):
-    params = {"query_param": "red"}
-    url = url_concat(f"{base_url}/required_enum_list_query_param", params)
-    response = await http_client.fetch(
-        url,
-        raise_error=False,
-    )
-    assert response.body is not None
-    body = json.loads(response.body)
-    assert body["query_param"] == ["red"]
-
-
-@pytest.mark.gen_test
-async def test_calling_invalid_required_enum_list_query_param_handler(
-    http_client, base_url
-):
-    params = {}
-    url = url_concat(f"{base_url}/required_enum_list_query_param", params)
-    response = await http_client.fetch(
-        url,
-        raise_error=False,
-    )
-    assert response.body is not None
-    assert response.code == 400
-
-
-@pytest.mark.gen_test
-async def test_calling_optional_enum_list_query_param_handler(http_client, base_url):
-    params = {"query_param": "red"}
-    url = url_concat(f"{base_url}/optional_enum_list_query_param", params)
-    response = await http_client.fetch(
-        url,
-        raise_error=False,
-    )
-    assert response.body is not None
-    body = json.loads(response.body)
-    assert body["query_param"] == ["red"]

@@ -169,8 +169,6 @@ class AnnotatedHandler(tornado.web.RequestHandler):
     def _parse_path_param(self, val: Any, name: str):
         parameter: inspect.Parameter = self.path_params[name]
         param_type = parameter.annotation
-        if isinstance(param_type, EnumMeta):
-            return types.check_enum(param_type, val, name)
         return types.cast(param_type, val, name)
 
     def _parse_query_params(self, http_method):

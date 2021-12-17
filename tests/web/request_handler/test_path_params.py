@@ -22,7 +22,7 @@ def app():
             blue = 2
 
         async def get(self, color: EnumParam):
-            self.write({"color": color})
+            self.write({"color": color.name})
 
     return Application(
         [
