@@ -27,9 +27,11 @@ import tornado.web
 OptionalType = Optional[type]
 OptionalList = Optional[List]
 GenericAliases = (_SpecialGenericAlias, _GenericAlias)
-
+AllPrimitives = (int, float, str, bool)
 
 def is_optional(parameter_type: Union[type, Tuple[type]]):
+    if isinstance(parameter_type, type):
+        return False
     if getattr(parameter_type, "__origin__", None) == Union:
         parameter_type = parameter_type.__args__
     if isinstance(parameter_type, tuple):
@@ -38,7 +40,7 @@ def is_optional(parameter_type: Union[type, Tuple[type]]):
 
 
 def is_list(parameter_type):
-    if parameter_type is list:
+    if parameter_type in (list, List):
         return True
     if isinstance(parameter_type, GenericAliases) and parameter_type.__origin__ in (
         list,
@@ -47,6 +49,8 @@ def is_list(parameter_type):
         return True
     return False
 
+def is_primitive(parameter_type: type):
+    return parameter_type in AllPrimitives
 
 def cast(parameter_type: Union[type, OptionalType, OptionalList], val: Any, name: str):
     # Retrieve type if parameter_type is optional
@@ -64,8 +68,9 @@ def cast(parameter_type: Union[type, OptionalType, OptionalList], val: Any, name
         return cast_enum(parameter_type, val, name)
 
     # Handle primitive params
-    if parameter_type is inspect._empty:
+    if not is_primitive(parameter_type):
         return val
+
     try:
         return parameter_type(val)
     except ValueError:
@@ -86,6 +91,8 @@ def check_list(
 
 
 def cast_list(parameter_type: type, val: List, name: str):
+    if not is_primitive(parameter_type):
+        return val
     try:
         return [parameter_type(item) for item in val]
     except ValueError:

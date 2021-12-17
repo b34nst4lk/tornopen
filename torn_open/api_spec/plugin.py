@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, TypeVar
 from enum import EnumMeta
 import inspect
 
@@ -70,6 +70,9 @@ def _get_type_of_enum_value(enum_meta: EnumMeta):
 
 
 def _get_type_to_openapi_type_mapping(annotation):
+    if isinstance(annotation, TypeVar):
+        annotation = str
+
     types_mapping = {
         str: "string",
         int: "integer",
