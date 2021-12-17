@@ -336,11 +336,16 @@ class Application(tornado.web.Application):
     def __init__(
         self,
         bindings,
+        *,
+        openapi_route="/openapi.json",
+        redoc_route="/redoc",
         **kwargs,
     ):
         self._check_bindings(bindings)
         self._set_params_to_handlers(bindings)
         self._create_api_spec(bindings)
+        self._add_openapi_json_binding(bindings, openapi_route)
+        self._add_redoc_binding(bindings, redoc_route)
         super().__init__(bindings, **kwargs)
 
     def _check_bindings(
@@ -400,5 +405,13 @@ class Application(tornado.web.Application):
                 handler_class=binding.handler_class,
                 description=binding.handler_class.__doc__,
             )
-        bindings.append(tornado.web.url("/openapi.json", OpenAPISpecHandler))
-        bindings.append(tornado.web.url("/redoc", RedocHandler))
+
+    def _add_openapi_json_binding(self, bindings, openapi_route):
+        if openapi_route:
+            bindings.append(tornado.web.url(openapi_route, OpenAPISpecHandler))
+        return bindings
+
+    def _add_redoc_binding(self, bindings, redoc_route):
+        if redoc_route:
+            bindings.append(tornado.web.url(redoc_route, RedocHandler))
+        return bindings
