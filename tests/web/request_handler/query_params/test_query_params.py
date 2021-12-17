@@ -1,6 +1,6 @@
 import pytest
 import json
-from typing import Optional, List
+from typing import Optional, List, Tuple
 
 from tornado.httputil import url_concat
 from tornado.web import url
@@ -57,6 +57,10 @@ def app():
         def get(self, query_param: Optional[str] = "x"):
             self.write({"query_param": query_param})
 
+    class RequiredTupleQueryParamHandler(AnnotatedHandler):
+        def get(self, query_param: Tuple[int, int]):
+            self.write({"query_param": query_param})
+
     path_param_app = Application(
         [
             url(r"/required_query_param", RequiredQueryParamHandler),
@@ -77,6 +81,7 @@ def app():
                 r"/optional_query_with_default_param",
                 OptionalQueryParamWithDefaultHandler,
             ),
+            url(r"/tuple/required", RequiredTupleQueryParamHandler),
         ]
     )
 
@@ -432,3 +437,15 @@ async def test_calling_optional_query_param_with_default_handler(http_client, ba
     assert response.body is not None
     body = json.loads(response.body)
     assert body["query_param"] == "x"
+
+@pytest.mark.gen_test
+async def test_calling_tuple_query_param_handler(http_client, base_url):
+    params = {"query_param": "1,1"}
+    url = url_concat(f"{base_url}/tuple/required", params)
+    response = await http_client.fetch(
+        url,
+        raise_error=False,
+    )
+    assert response.body is not None
+    body = json.loads(response.body)
+    assert body["query_param"] == [1, 1]

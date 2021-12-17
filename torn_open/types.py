@@ -12,6 +12,7 @@ else:
         _GenericAlias,
     )
 
+import functools
 from typing import (
     Any,
     List,
@@ -39,15 +40,17 @@ def is_optional(parameter_type: Union[type, Tuple[type]]):
     return False
 
 
-def is_list(parameter_type):
-    if parameter_type in (list, List):
+def is_generic(parameter_type, types):
+    if parameter_type in types:
         return True
-    if isinstance(parameter_type, GenericAliases) and parameter_type.__origin__ in (
-        list,
-        List,
-    ):
-        return True
-    return False
+    return (
+        isinstance(parameter_type, GenericAliases)
+        and parameter_type.__origin__ in types
+    )
+
+
+is_list = functools.partial(is_generic, types=(list, List))
+is_tuple = functools.partial(is_generic, types=(tuple, Tuple))
 
 
 def is_primitive(parameter_type: type):
@@ -64,6 +67,9 @@ def cast(parameter_type: Union[type, OptionalType, OptionalList], val: Any, name
 
     if is_list(parameter_type):
         return cast_list(parameter_type, val, name)
+
+    if is_tuple(parameter_type):
+        return cast_tuple(parameter_type, val, name)
 
     # Handle Enum params
     if isinstance(parameter_type, EnumMeta):
@@ -103,6 +109,29 @@ def cast_list_items(parameter_type: type, val: List, name: str):
 
 def cast_enum_list(enum: EnumMeta, val: List[Any], name: str):
     return [cast_enum(enum, item, name) for item in val]
+
+
+def cast_tuple(
+    parameter_type: Union[type, OptionalType, OptionalList], val: str, name: str
+):
+    val_list: List = val.split(",")
+    if not getattr(parameter_type, "__args__", None):
+        return tuple(val_list)
+
+    inner_types = parameter_type.__args__
+    return cast_tuple_items(val_list, inner_types, name)
+
+
+def cast_tuple_items(values, inner_types, name):
+    if len(values) != len(inner_types):
+        raise tornado.web.HTTPError(
+            400, f"invalid length {values} for parameter {name}"
+        )
+
+    casted_list = [
+        cast(inner_type, value, name) for inner_type, value in zip(inner_types, values)
+    ]
+    return tuple(casted_list)
 
 
 def cast_enum(enum: EnumMeta, val: Any, name: str):
