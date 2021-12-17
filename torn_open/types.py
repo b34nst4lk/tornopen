@@ -20,7 +20,6 @@ from typing import (
     Optional,
 )
 from enum import EnumMeta
-import inspect
 
 import tornado.web
 
@@ -28,6 +27,7 @@ OptionalType = Optional[type]
 OptionalList = Optional[List]
 GenericAliases = (_SpecialGenericAlias, _GenericAlias)
 AllPrimitives = (int, float, str, bool)
+
 
 def is_optional(parameter_type: Union[type, Tuple[type]]):
     if isinstance(parameter_type, type):
@@ -49,8 +49,10 @@ def is_list(parameter_type):
         return True
     return False
 
+
 def is_primitive(parameter_type: type):
     return parameter_type in AllPrimitives
+
 
 def cast(parameter_type: Union[type, OptionalType, OptionalList], val: Any, name: str):
     # Retrieve type if parameter_type is optional
