@@ -63,7 +63,7 @@ def cast(parameter_type: Union[type, OptionalType, OptionalList], val: Any, name
         parameter_type = parameter_type[0]
 
     if is_list(parameter_type):
-        return check_list(parameter_type, val, name)
+        return cast_list(parameter_type, val, name)
 
     # Handle Enum params
     if isinstance(parameter_type, EnumMeta):
@@ -79,7 +79,7 @@ def cast(parameter_type: Union[type, OptionalType, OptionalList], val: Any, name
         raise tornado.web.HTTPError(400, f"invalid type {val} for parameter {name}")
 
 
-def check_list(
+def cast_list(
     parameter_type: Union[type, OptionalType, OptionalList], val: str, name: str
 ):
     val_list: List = val.split(",")
@@ -89,10 +89,10 @@ def check_list(
         inner_type = parameter_type.__args__[0]
     if isinstance(inner_type, EnumMeta):
         return cast_enum_list(inner_type, val_list, name)
-    return cast_list(inner_type, val_list, name)
+    return cast_list_items(inner_type, val_list, name)
 
 
-def cast_list(parameter_type: type, val: List, name: str):
+def cast_list_items(parameter_type: type, val: List, name: str):
     if not is_primitive(parameter_type):
         return val
     try:
