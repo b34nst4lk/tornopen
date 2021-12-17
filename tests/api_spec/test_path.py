@@ -161,10 +161,10 @@ def test_int_enum_schema_parameter_in_path_param_handler_spec(spec):
         "in": "path",
         "required": True,
         "schema": {
-            "type": "integer",
+            "type": "string",
             "enum": [
-                1,
-                2,
+                "hello",
+                "goodbye",
             ],
         },
     }

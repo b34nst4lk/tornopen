@@ -61,12 +61,7 @@ def get_path_params(handler):
 
 def _unpack_enum(enum_meta: EnumMeta):
     for enum_item in enum_meta.__members__.values():
-        yield enum_item.value
-
-
-def _get_type_of_enum_value(enum_meta: EnumMeta):
-    for enum_item in _unpack_enum(enum_meta):
-        return type(enum_item)
+        yield enum_item.name
 
 
 def _get_type_to_openapi_type_mapping(annotation):
@@ -87,7 +82,7 @@ def _get_type_to_openapi_type_mapping(annotation):
         return _get_type_to_openapi_type_mapping(annotation.__args__[0])
 
     if isinstance(annotation, EnumMeta):
-        annotation = _get_type_of_enum_value(annotation)
+        annotation = str
         return _get_type_to_openapi_type_mapping(annotation)
 
     if is_list(annotation):
