@@ -20,6 +20,7 @@ from typing import (
     Optional,
 )
 from enum import EnumMeta
+import inspect
 
 import tornado.web
 
@@ -63,6 +64,8 @@ def cast(parameter_type: Union[type, OptionalType, OptionalList], val: Any, name
         return cast_enum(parameter_type, val, name)
 
     # Handle primitive params
+    if parameter_type is inspect._empty:
+        return val
     try:
         return parameter_type(val)
     except ValueError:
@@ -73,7 +76,10 @@ def check_list(
     parameter_type: Union[type, OptionalType, OptionalList], val: str, name: str
 ):
     val_list: List = val.split(",")
-    inner_type = parameter_type.__args__[0]
+    if not getattr(parameter_type, "__args__", None):
+        inner_type = str
+    else:
+        inner_type = parameter_type.__args__[0]
     if isinstance(inner_type, EnumMeta):
         return cast_enum_list(inner_type, val_list, name)
     return cast_list(inner_type, val_list, name)

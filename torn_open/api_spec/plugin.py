@@ -128,7 +128,9 @@ def _get_type_to_openapi_type_mapping(annotation):
 
 
 def _get_item_type(annotation):
-    if len(annotation.__args__) == 1:
+    if not getattr(annotation, "__args__", None):
+        return None
+    elif len(annotation.__args__) == 1:
         item_type = _get_type_to_openapi_type_mapping(annotation.__args__[0])
     elif is_optional(annotation):
         item_type = _get_type_to_openapi_type_mapping(
