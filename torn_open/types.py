@@ -1,4 +1,13 @@
 from sys import version_info
+import functools
+from typing import (
+    Any,
+    List,
+    Union,
+    Tuple,
+    Optional,
+)
+from enum import EnumMeta
 
 python_minor_version = version_info[1]
 if python_minor_version < 7:
@@ -13,17 +22,6 @@ else:
         _GenericAlias,
     )
 
-import functools
-from typing import (
-    Any,
-    List,
-    Union,
-    Tuple,
-    Optional,
-)
-from enum import EnumMeta
-
-import tornado.web
 
 OptionalType = Optional[type]
 OptionalList = Optional[List]
@@ -85,6 +83,7 @@ def cast(parameter_type: Union[type, OptionalType, OptionalList], val: Any):
 
     return val
 
+
 def retrieve_type(parameter_type):
     if is_optional(parameter_type):
         parameter_type = parameter_type.__args__[0]
@@ -95,9 +94,7 @@ def retrieve_type(parameter_type):
     return parameter_type
 
 
-def cast_list(
-    parameter_type: Union[type, OptionalType, OptionalList], val: str
-):
+def cast_list(parameter_type: Union[type, OptionalType, OptionalList], val: str):
     val_list: List = val.split(",")
     if not getattr(parameter_type, "__args__", None):
         inner_type = str
@@ -118,9 +115,7 @@ def cast_enum_list(enum: EnumMeta, val: List[Any]):
     return [cast_enum(enum, item) for item in val]
 
 
-def cast_tuple(
-    parameter_type: Union[type, OptionalType, OptionalList], val: str
-):
+def cast_tuple(parameter_type: Union[type, OptionalType, OptionalList], val: str):
     val_list: List = val.split(",")
     if type(parameter_type) is type:
         return tuple(val_list)
@@ -131,9 +126,7 @@ def cast_tuple(
 
 def cast_tuple_items(values, inner_types):
     if len(values) != len(inner_types):
-        raise tornado.web.HTTPError(
-            400, f"invalid length {values} for parameter"
-        )
+        raise ValidationError("invalid_tuple_length", values)
 
     casted_list = [
         cast(inner_type, value) for inner_type, value in zip(inner_types, values)

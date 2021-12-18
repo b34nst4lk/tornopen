@@ -8,7 +8,6 @@ from typing import (
     Dict,
     Pattern,
     Type,
-    Tuple,
 )
 
 import tornado.web

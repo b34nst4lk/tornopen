@@ -27,5 +27,5 @@ setup(
         "pydantic",
         "tornado",
         "typed-ast;python_version>='3.8'",
-    ]
+    ],
 )

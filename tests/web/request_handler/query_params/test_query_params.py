@@ -68,9 +68,13 @@ def app():
 
     class RequiredLongTupleQueryParamHandler(AnnotatedHandler):
         def get(self, query_param: Tuple[int, str, MyEnum, float]):
-            output = (query_param[0], query_param[1], query_param[2].name, query_param[3])
+            output = (
+                query_param[0],
+                query_param[1],
+                query_param[2].name,
+                query_param[3],
+            )
             self.write({"query_param": output})
-
 
     path_param_app = Application(
         [
@@ -450,6 +454,7 @@ async def test_calling_optional_query_param_with_default_handler(http_client, ba
     body = json.loads(response.body)
     assert body["query_param"] == "x"
 
+
 @pytest.mark.gen_test
 async def test_calling_tuple_query_param_handler(http_client, base_url):
     params = {"query_param": "1,1"}
@@ -461,6 +466,7 @@ async def test_calling_tuple_query_param_handler(http_client, base_url):
     assert response.body is not None
     body = json.loads(response.body)
     assert body["query_param"] == [1, 1]
+
 
 @pytest.mark.gen_test
 async def test_calling_long_tuple_query_param_handler(http_client, base_url):
