@@ -17,11 +17,8 @@ class HTTPJsonError(Exception):
 
     def json(self):
         return {
-            "error": {
-                "status_code": self.status_code,
-                "type": self.type,
-                "message": self.message,
-            }
+            "type": self.type,
+            "message": self.message,
         }
 
 

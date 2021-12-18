@@ -27,60 +27,47 @@ from torn_open import models
 from torn_open.api_spec import TornOpenPlugin, TornOpenAPISpec
 
 
-class AnnotatedHandler(tornado.web.RequestHandler):
+class _HandlerClassParams:
     """
-    This is the default doc string of the AnnotatedHandler. Add a doc
-    string to the inherited handler overwrite this doc string.
+    Container for params defined for a handler. An AnnotatedHandler can have 1 or more _HandlerClassParams
     """
 
-    path_params: Dict[str, inspect.Parameter] = {}
-    query_params: Dict[str, Dict[str, inspect.Parameter]] = {}
-    json_param: Dict[str, Tuple[str, inspect.Parameter]] = {}
-    response_models: Dict[str, models.ResponseModel] = {}
+    def __init__(self, handler_class, rule):
+        self.path_params = {}
+        self.query_params = {}
+        self.json_param = {}
+        self.response_models = {}
 
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-
-        cls.path_params: Dict[str, inspect.Parameter] = {}
-        cls.query_params: Dict[str, Dict[str, inspect.Parameter]] = {}
-        cls.json_param: Dict[str, Tuple[str, inspect.Parameter]] = {}
-        cls.response_models: Dict[str, models.ResponseModel] = {}
-
-    @classmethod
-    def _set_params(cls, rule: Pattern):
-        for http_method in cls.SUPPORTED_METHODS:
+        for http_method in handler_class.SUPPORTED_METHODS:
             http_method = http_method.lower()
-            method = getattr(cls, http_method)
-            if method is getattr(super(), http_method):
+            method = getattr(handler_class, http_method)
+            if method is getattr(tornado.web.RequestHandler, http_method):
                 continue
 
-            cls._set_path_param_names(method, rule)
-            cls._set_query_param_names(method)
-            cls._set_json_param_names(method)
-            cls._set_response_models(method)
+            self._set_path_param_names(method, rule)
+            self._set_query_param_names(method)
+            self._set_json_param_names(method)
+            self._set_response_models(method)
 
-    @classmethod
-    def _set_path_param_names(cls, method, rule: Pattern):
+    def _set_path_param_names(self, method, rule: Pattern):
         path_params = [param for param in rule.groupindex.keys()]
         signature = inspect.signature(method)
         for param_name, parameter in signature.parameters.items():
             if param_name not in path_params:
                 continue
-            cls.path_params[param_name] = parameter
+            self.path_params[param_name] = parameter
 
-    @classmethod
-    def _set_query_param_names(cls, method):
-        cls.query_params[method.__name__] = {}
+    def _set_query_param_names(self, method):
+        self.query_params[method.__name__] = {}
         signature = inspect.signature(method)
         for param_name, parameter in signature.parameters.items():
-            if not cls._is_query_param(param_name, parameter):
+            if not self._is_query_param(param_name, parameter):
                 continue
-            cls.query_params[method.__name__][param_name] = parameter
+            self.query_params[method.__name__][param_name] = parameter
 
-    @classmethod
-    def _is_query_param(cls, param_name, parameter):
+    def _is_query_param(self, param_name, parameter):
         is_annotated = parameter.annotation != inspect._empty
-        is_path_param = param_name in cls.path_params
+        is_path_param = param_name in self.path_params
         is_self = param_name == "self"
         is_class = inspect.isclass(parameter.annotation)
 
@@ -94,27 +81,25 @@ class AnnotatedHandler(tornado.web.RequestHandler):
             return not issubclass(parameter.annotation, models.RequestModel)
         return True
 
-    @classmethod
-    def _set_json_param_names(cls, method):
-        cls.json_param[method.__name__] = {}
+    def _set_json_param_names(self, method):
+        self.json_param[method.__name__] = {}
         json_params = []
         signature = inspect.signature(method)
         for param_name, parameter in signature.parameters.items():
-            if not cls._is_json_param(param_name, parameter, method):
+            if not self._is_json_param(param_name, parameter, method):
                 continue
 
             json_params.append(param_name)
-            cls.json_param[method.__name__] = (param_name, parameter)
+            self.json_param[method.__name__] = (param_name, parameter)
 
         if len(json_params) > 1:
             raise ValueError(
-                f"{cls.__name__}.{method.__name__}:only one json param allowed"
+                f"{self.__name__}.{method.__name__}:only one json param allowed"
             )
 
-    @classmethod
-    def _is_json_param(cls, param_name, parameter, method) -> bool:
+    def _is_json_param(self, param_name, parameter, method) -> bool:
         is_annotated = parameter.annotation != inspect._empty
-        is_path_param = param_name in cls.path_params
+        is_path_param = param_name in self.path_params
         is_self = param_name == "self"
         is_class = inspect.isclass(parameter.annotation)
 
@@ -128,28 +113,34 @@ class AnnotatedHandler(tornado.web.RequestHandler):
             return issubclass(parameter.annotation, models.RequestModel)
         return False
 
-    @classmethod
-    def _set_response_models(cls, method):
+    def _set_response_models(self, method):
         signature = inspect.signature(method)
         response_model = (
             signature.return_annotation
             if signature.return_annotation != inspect._empty
             else None
         )
-        cls.response_models[method.__name__] = response_model
+        self.response_models[method.__name__] = response_model
+
+
+class _HandlerParamsParser:
+    def __init__(self, handler):
+        self.handler = handler
+        self.handler_class_params = handler.handler_class_params
 
     def _collect_params(
         self,
         cls_http_method: Callable,
+        path_kwargs,
     ) -> Dict[str, Any]:
         # In a route, you can either have path_args or path_kwargs,
         # and not both, so we process both them differently
         method = cls_http_method.__name__
 
-        path_kwargs = self._parse_path_params()
+        path_kwargs = self._parse_path_params(path_kwargs)
         query_kwargs = self._parse_query_params(method)
         json_kwarg = {}
-        if self.json_param[method]:
+        if self.handler_class_params.json_param[method]:
             json_kwarg = self._parse_json_param(method)
 
         return {
@@ -158,30 +149,46 @@ class AnnotatedHandler(tornado.web.RequestHandler):
             **json_kwarg,
         }
 
-    def _parse_path_params(self) -> Dict[str, str]:
-        path_kwargs = {}
-        for name, val in self.path_kwargs.items():
-            path_kwargs[name] = self._parse_path_param(val, name)
-        return path_kwargs
+    def _parse_path_params(self, path_kwargs) -> Dict[str, str]:
+        returned_path_kwargs = {}
+        for name, val in path_kwargs.items():
+            returned_path_kwargs[name] = self._parse_path_param(val, name)
+        return returned_path_kwargs
 
     def _parse_path_param(self, val: Any, name: str):
-        parameter: inspect.Parameter = self.path_params[name]
+        parameter: inspect.Parameter = self.handler_class_params.path_params[name]
         param_type = parameter.annotation
-        return types.cast(param_type, val, name)
+        try:
+            return types.cast(param_type, val)
+        except types.ValidationError as e:
+            raise models.ClientError(
+                status_code=400,
+                error_type=e.type,
+                message=f"{e.type} for {name}: {e.value}",
+            ) from e
 
     def _parse_query_params(self, http_method):
         query_kwargs = {}
-        for name, parameter in self.query_params[http_method].items():
+        for name, parameter in self.handler_class_params.query_params[
+            http_method
+        ].items():
             query_kwargs[name] = self._parse_query_param(name, parameter)
         return query_kwargs
 
     def _parse_query_param(self, name, parameter):
         parameter_type = parameter.annotation
 
-        query_kwarg = self.get_query_argument(name, default=None)
+        query_kwarg = self.handler.get_query_argument(name, default=None)
 
         if query_kwarg:
-            return types.cast(parameter_type, query_kwarg, name)
+            try:
+                return types.cast(parameter_type, query_kwarg)
+            except types.ValidationError as e:
+                raise models.ClientError(
+                    status_code=400,
+                    error_type=e.type,
+                    message=f"{e.type} for {name}: {e.value}",
+                ) from e
 
         if parameter.default != inspect._empty:
             return parameter.default
@@ -190,15 +197,33 @@ class AnnotatedHandler(tornado.web.RequestHandler):
         raise tornado.web.MissingArgumentError(name)
 
     def _parse_json_param(self, http_method):
-        param_name, parameter = self.json_param[http_method]
+        param_name, parameter = self.handler_class_params.json_param[http_method]
         request_model = parameter.annotation
-        request_dict = json.loads(self.request.body)
+        request_dict = json.loads(self.handler.request.body)
         try:
             request_object = request_model(**request_dict)
         except pydantic.error_wrappers.ValidationError as e:
-            raise tornado.web.HTTPError(400, str(e.errors()))
+            raise models.ClientError(
+                status_code=400,
+                error_type="invalid_request_body",
+                message=str(e.errors()),
+            )
 
         return {param_name: request_object}
+
+
+class AnnotatedHandler(tornado.web.RequestHandler):
+    """
+    This is the default doc string of the AnnotatedHandler. Add a doc
+    string to the inherited handler overwrite this doc string.
+    """
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+
+    @classmethod
+    def _set_params(cls, rule: Pattern):
+        cls.handler_class_params = _HandlerClassParams(cls, rule)
 
     @tornado.gen.coroutine
     def _execute(self, transforms, *args, **kwargs):
@@ -210,7 +235,9 @@ class AnnotatedHandler(tornado.web.RequestHandler):
         self._transforms = transforms
         try:
             if self.request.method not in self.SUPPORTED_METHODS:
-                raise tornado.web.HTTPError(405)
+                raise models.ClientError(
+                    status_code=405, error_type="unsupported_method"
+                )
 
             self.path_args = [self.decode_argument(arg) for arg in args]
             self.path_kwargs = dict(
@@ -255,10 +282,10 @@ class AnnotatedHandler(tornado.web.RequestHandler):
                 except tornado.iostream.StreamClosedError:
                     return
 
-            method = getattr(self, self.request.method.lower())
-
             # Added handling of annotated path, query and json params here
-            params: dict = self._collect_params(method)
+            method = getattr(self, self.request.method.lower())
+            params_parser = _HandlerParamsParser(self)
+            params: dict = params_parser._collect_params(method, self.path_kwargs)
             # End
 
             result = method(**params)
@@ -275,6 +302,7 @@ class AnnotatedHandler(tornado.web.RequestHandler):
             if self._auto_finish and not self._finished:
                 self.finish()
         except (models.ClientError, models.ServerError) as e:
+            self.set_status(e.status_code)
             self.write(e.json())
             self.finish()
         except Exception as e:

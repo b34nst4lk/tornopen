@@ -54,7 +54,7 @@ def right_strip_path(path):
 
 # Path params
 def get_path_params(handler):
-    path_params = handler.path_params
+    path_params = handler.handler_class_params.path_params
     parameters = [PathParameter(parameter) for parameter in path_params.values()]
     return parameters
 
@@ -192,7 +192,7 @@ def Operation(method: str, handler, components):
         return getattr(method, "_openapi_summary", None)
 
     def _get_query_params(method, handler):
-        parameters = handler.query_params[method].values()
+        parameters = handler.handler_class_params.query_params[method].values()
         return [QueryParameter(parameter) for parameter in parameters]
 
     def _get_operation_description(method: str, handler):
@@ -216,7 +216,7 @@ SCHEMA_REF_TEMPLATE = "#/components/schemas/{model}"
 
 
 def RequestBody(method: str, handler):
-    json_param = handler.json_param[method]
+    json_param = handler.handler_class_params.json_param[method]
     if not json_param:
         return None
     _, parameter = json_param
@@ -262,7 +262,7 @@ def SuccessResponse(method, handler, components):
             description = response_model.__doc__.strip()
         return description
 
-    response_model = handler.response_models[method]
+    response_model = handler.handler_class_params.response_models[method]
     return {
         "description": get_success_response_description(response_model),
         "content": {
