@@ -1,6 +1,7 @@
 import pytest
 import json
 from typing import Optional, List, Tuple
+from enum import Enum
 
 from tornado.httputil import url_concat
 from tornado.web import url
@@ -61,6 +62,16 @@ def app():
         def get(self, query_param: Tuple[int, int]):
             self.write({"query_param": query_param})
 
+    class MyEnum(Enum):
+        x = 1
+        y = 2
+
+    class RequiredLongTupleQueryParamHandler(AnnotatedHandler):
+        def get(self, query_param: Tuple[int, str, MyEnum, float]):
+            output = (query_param[0], query_param[1], query_param[2].name, query_param[3])
+            self.write({"query_param": output})
+
+
     path_param_app = Application(
         [
             url(r"/required_query_param", RequiredQueryParamHandler),
@@ -82,6 +93,7 @@ def app():
                 OptionalQueryParamWithDefaultHandler,
             ),
             url(r"/tuple/required", RequiredTupleQueryParamHandler),
+            url(r"/long-tuple/required", RequiredLongTupleQueryParamHandler),
         ]
     )
 
@@ -449,3 +461,16 @@ async def test_calling_tuple_query_param_handler(http_client, base_url):
     assert response.body is not None
     body = json.loads(response.body)
     assert body["query_param"] == [1, 1]
+
+@pytest.mark.gen_test
+async def test_calling_long_tuple_query_param_handler(http_client, base_url):
+    query_param = [1, "random_string", "x", 1.232]
+    params = {"query_param": ",".join([str(val) for val in query_param])}
+    url = url_concat(f"{base_url}/long-tuple/required", params)
+    response = await http_client.fetch(
+        url,
+        raise_error=False,
+    )
+    assert response.body is not None
+    body = json.loads(response.body)
+    assert body["query_param"] == query_param
