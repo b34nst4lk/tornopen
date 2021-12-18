@@ -1,9 +1,10 @@
 from sys import version_info
 
-if version_info[1] < 7:
+python_minor_version = version_info[1]
+if python_minor_version < 7:
     from typing import GenericMeta as _GenericAlias
     from typing import GenericMeta as _SpecialGenericAlias
-elif version_info[1] < 9:
+elif python_minor_version < 9:
     from typing import _GenericAlias
     from typing import _GenericAlias as _SpecialGenericAlias
 else:
@@ -28,6 +29,12 @@ OptionalType = Optional[type]
 OptionalList = Optional[List]
 GenericAliases = (_SpecialGenericAlias, _GenericAlias)
 AllPrimitives = (int, float, str, bool)
+
+
+class ValidationError(Exception):
+    def __init__(self, error_type, value):
+        self.type = error_type
+        self.value = value
 
 
 def is_optional(parameter_type: Union[type, Tuple[type]]):
@@ -57,36 +64,39 @@ def is_primitive(parameter_type: type):
     return parameter_type in AllPrimitives
 
 
-def cast(parameter_type: Union[type, OptionalType, OptionalList], val: Any, name: str):
-    # Retrieve type if parameter_type is optional
+def cast(parameter_type: Union[type, OptionalType, OptionalList], val: Any):
+    parameter_type = retrieve_type(parameter_type)
+
+    if is_list(parameter_type):
+        return cast_list(parameter_type, val)
+
+    if is_tuple(parameter_type):
+        return cast_tuple(parameter_type, val)
+
+    if isinstance(parameter_type, EnumMeta):
+        return cast_enum(parameter_type, val)
+
+    # Handle primitive params
+    if is_primitive(parameter_type):
+        try:
+            return parameter_type(val)
+        except ValueError as e:
+            raise ValidationError("invalid value", val) from e
+
+    return val
+
+def retrieve_type(parameter_type):
     if is_optional(parameter_type):
         parameter_type = parameter_type.__args__[0]
 
     if isinstance(parameter_type, tuple):
         parameter_type = parameter_type[0]
 
-    if is_list(parameter_type):
-        return cast_list(parameter_type, val, name)
-
-    if is_tuple(parameter_type):
-        return cast_tuple(parameter_type, val, name)
-
-    # Handle Enum params
-    if isinstance(parameter_type, EnumMeta):
-        return cast_enum(parameter_type, val, name)
-
-    # Handle primitive params
-    if not is_primitive(parameter_type):
-        return val
-
-    try:
-        return parameter_type(val)
-    except ValueError:
-        raise tornado.web.HTTPError(400, f"invalid type {val} for parameter {name}")
+    return parameter_type
 
 
 def cast_list(
-    parameter_type: Union[type, OptionalType, OptionalList], val: str, name: str
+    parameter_type: Union[type, OptionalType, OptionalList], val: str
 ):
     val_list: List = val.split(",")
     if not getattr(parameter_type, "__args__", None):
@@ -94,48 +104,45 @@ def cast_list(
     else:
         inner_type = parameter_type.__args__[0]
     if isinstance(inner_type, EnumMeta):
-        return cast_enum_list(inner_type, val_list, name)
-    return cast_list_items(inner_type, val_list, name)
+        return cast_enum_list(inner_type, val_list)
+    return cast_list_items(inner_type, val_list)
 
 
-def cast_list_items(parameter_type: type, val: List, name: str):
+def cast_list_items(parameter_type: type, val: List):
     if not is_primitive(parameter_type):
         return val
-    try:
-        return [parameter_type(item) for item in val]
-    except ValueError:
-        raise tornado.web.HTTPError(400, f"invalid type {val} for parameter {name}")
+    return [cast(parameter_type, item) for item in val]
 
 
-def cast_enum_list(enum: EnumMeta, val: List[Any], name: str):
-    return [cast_enum(enum, item, name) for item in val]
+def cast_enum_list(enum: EnumMeta, val: List[Any]):
+    return [cast_enum(enum, item) for item in val]
 
 
 def cast_tuple(
-    parameter_type: Union[type, OptionalType, OptionalList], val: str, name: str
+    parameter_type: Union[type, OptionalType, OptionalList], val: str
 ):
     val_list: List = val.split(",")
-    if not getattr(parameter_type, "__args__", None):
+    if type(parameter_type) is type:
         return tuple(val_list)
 
     inner_types = parameter_type.__args__
-    return cast_tuple_items(val_list, inner_types, name)
+    return cast_tuple_items(val_list, inner_types)
 
 
-def cast_tuple_items(values, inner_types, name):
+def cast_tuple_items(values, inner_types):
     if len(values) != len(inner_types):
         raise tornado.web.HTTPError(
-            400, f"invalid length {values} for parameter {name}"
+            400, f"invalid length {values} for parameter"
         )
 
     casted_list = [
-        cast(inner_type, value, name) for inner_type, value in zip(inner_types, values)
+        cast(inner_type, value) for inner_type, value in zip(inner_types, values)
     ]
     return tuple(casted_list)
 
 
-def cast_enum(enum: EnumMeta, val: Any, name: str):
+def cast_enum(enum: EnumMeta, val: Any):
     try:
         return enum[val]
-    except KeyError:
-        raise tornado.web.HTTPError(400, f"invalid value {val} for parameter {name}")
+    except KeyError as e:
+        raise ValidationError("invalid_enum", val) from e
