@@ -29,14 +29,11 @@ def app():
 async def test_response_model_handler(http_client, base_url):
     url = f"{base_url}/response_model"
 
-    response = await http_client.fetch(url)
+    response = await http_client.fetch(url, raise_error=False)
 
-    assert response.code == 200
+    assert response.code == 400
     body = json.loads(response.body)
     assert body == {
-        "error": {
-            "status_code": 400,
-            "type": "invalid",
-            "message": "invalid",
-        },
+        "type": "invalid",
+        "message": "invalid",
     }
