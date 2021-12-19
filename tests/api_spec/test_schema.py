@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from torn_open.web import Application, AnnotatedHandler
 from torn_open.models import RequestModel, ResponseModel
 
+
 def test_create_app_with_duplicated_schemas():
     class DoublyNestedModel(BaseModel):
         key: str
@@ -26,11 +27,10 @@ def test_create_app_with_duplicated_schemas():
     class Schema2Handler(AnnotatedHandler):
         def post(self, req_model: SharedRequestModel) -> SharedResponseModel:
             pass
-    
+
     class Schema3Handler(AnnotatedHandler):
         def post(self, req_model: SharedRequestModel) -> SharedRequestModel:
             pass
-
 
     return Application(
         [

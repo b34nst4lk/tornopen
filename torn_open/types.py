@@ -76,11 +76,7 @@ def cast(parameter_type: Union[type, OptionalType, OptionalList], val: Any):
 
     # Handle primitive params
     if is_primitive(parameter_type):
-        try:
-            return parameter_type(val)
-        except ValueError as e:
-            raise ValidationError("invalid value", val) from e
-
+        return cast_primitive(parameter_type, val)
     return val
 
 
@@ -93,6 +89,23 @@ def retrieve_type(parameter_type):
 
     return parameter_type
 
+def cast_primitive(parameter_type, val):
+    if parameter_type is bool:
+        return cast_bool(val)
+
+    try:
+        return parameter_type(val)
+    except ValueError as e:
+        raise ValidationError("invalid value", val) from e
+
+
+def cast_bool(val):
+    val = str(val).lower()
+    if val in ("1", "true", "on"):
+        return True
+    
+    elif val in ("0", "false", "off"):
+        return False
 
 def cast_list(parameter_type: Union[type, OptionalType, OptionalList], val: str):
     val_list: List = val.split(",")
