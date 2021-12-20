@@ -217,9 +217,6 @@ class AnnotatedHandler(tornado.web.RequestHandler):
     string to the inherited handler overwrite this doc string.
     """
 
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-
     @classmethod
     def _set_params(cls, rule: Pattern):
         cls.handler_class_params = _HandlerClassParams(cls, rule)
