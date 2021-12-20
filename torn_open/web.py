@@ -322,15 +322,25 @@ class AnnotatedHandler(tornado.web.RequestHandler):
                 self._prepared_future.set_result(None)
 
 
-class OpenAPISpecHandler(tornado.web.RequestHandler):
+class OpenAPISpecJsonHandler(tornado.web.RequestHandler):
     def get(self):
         spec = json.dumps(self.application.api_spec.to_dict())
         self.write(spec)
 
 
-class RedocHandler(tornado.web.RequestHandler):
+class OpenAPISpecYAMLHandler(tornado.web.RequestHandler):
     def get(self):
-        TEMPLATE = """
+        spec = self.application.api_spec.to_yaml()
+        self.write(spec)
+
+
+
+class RedocHandler(tornado.web.RequestHandler):
+    def initialize(self, openapi_route: str):
+        self.openapi_route = openapi_route
+
+    def get(self):
+        TEMPLATE = f"""
 <!DOCTYPE html>
 <html>
   <head>
@@ -344,14 +354,14 @@ class RedocHandler(tornado.web.RequestHandler):
     Redoc doesn't change outer page styles
     -->
     <style>
-      body {
+      body {{
         margin: 0;
         padding: 0;
-      }
+      }}
     </style>
   </head>
   <body>
-    <redoc spec-url='/openapi.json'></redoc>
+    <redoc spec-url={self.openapi_route}></redoc>
     <script src="https://cdn.jsdelivr.net/npm/redoc@latest/bundles/redoc.standalone.js"> </script>
   </body>
 </html>
@@ -364,15 +374,17 @@ class Application(tornado.web.Application):
         self,
         bindings,
         *,
-        openapi_route="/openapi.json",
+        openapi_yaml_route="/openapi.yaml",
+        openapi_json_route="/openapi.json",
         redoc_route="/redoc",
         **kwargs,
     ):
         self._check_bindings(bindings)
         self._set_params_to_handlers(bindings)
         self._create_api_spec(bindings)
-        self._add_openapi_json_binding(bindings, openapi_route)
-        self._add_redoc_binding(bindings, redoc_route)
+        self._add_openapi_json_binding(bindings, openapi_json_route)
+        self._add_openapi_yaml_binding(bindings, openapi_yaml_route)
+        self._add_redoc_binding(bindings, redoc_route, openapi_json_route)
         super().__init__(bindings, **kwargs)
 
     def _check_bindings(
@@ -435,10 +447,15 @@ class Application(tornado.web.Application):
 
     def _add_openapi_json_binding(self, bindings, openapi_route):
         if openapi_route:
-            bindings.append(tornado.web.url(openapi_route, OpenAPISpecHandler))
+            bindings.append(tornado.web.url(openapi_route, OpenAPISpecJsonHandler))
         return bindings
 
-    def _add_redoc_binding(self, bindings, redoc_route):
+    def _add_openapi_yaml_binding(self, bindings, openapi_route):
+        if openapi_route:
+            bindings.append(tornado.web.url(openapi_route, OpenAPISpecYAMLHandler))
+        return bindings
+
+    def _add_redoc_binding(self, bindings, redoc_route, openapi_route):
         if redoc_route:
-            bindings.append(tornado.web.url(redoc_route, RedocHandler))
+            bindings.append(tornado.web.url(redoc_route, RedocHandler, {"openapi_route": openapi_route}))
         return bindings

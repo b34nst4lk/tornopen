@@ -16,7 +16,7 @@ def test_base_request_handler_can_work_with_annotated_handler():
 @pytest.fixture
 def app():
     return Application(
-        [], openapi_route="/new_openapi_route", redoc_route="/new_redoc_route"
+        [], openapi_json_route="/new_openapi_route", redoc_route="/new_redoc_route"
     )
 
 
