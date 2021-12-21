@@ -367,29 +367,41 @@ class RedocHandler(tornado.web.RequestHandler):
 
 
 class Application(tornado.web.Application):
+    """
+    The Application class subclasses Tornado's Application class and adds additional options for customizing the OpenAPI and Redoc routes. On initialization, the Application class wil review the handlers and generate OpenAPI spec.
+
+    If you are adopting TornOpen to an existing Tornado application, you can simply replace the Tornado's Application class with TornOpen's Application class.
+    """
     def __init__(
         self,
-        bindings,
+        handlers,
         *,
-        openapi_yaml_route="/openapi.yaml",
-        openapi_json_route="/openapi.json",
-        redoc_route="/redoc",
+        openapi_yaml_route: str="/openapi.yaml",
+        openapi_json_route: str="/openapi.json",
+        redoc_route:str ="/redoc",
         **kwargs,
     ):
-        self._check_bindings(bindings)
-        self._set_params_to_handlers(bindings)
-        self._create_api_spec(bindings)
-        self._add_openapi_json_binding(bindings, openapi_json_route)
-        self._add_openapi_yaml_binding(bindings, openapi_yaml_route)
-        self._add_redoc_binding(bindings, redoc_route, openapi_json_route)
-        super().__init__(bindings, **kwargs)
+        """
+        Arguments:
+            handlers: list of routes and handlers
+            openapi_yaml_route: Route for openapi.yaml
+            openapi_json_route: Route for openapi.json
+            redoc_route: Route for redoc
+        """
+        self._check_handlers(handlers)
+        self._set_params_to_handlers(handlers)
+        self._create_api_spec(handlers)
+        self._add_openapi_json_handler(handlers, openapi_json_route)
+        self._add_openapi_yaml_handler(handlers, openapi_yaml_route)
+        self._add_redoc_handler(handlers, redoc_route, openapi_json_route)
+        super().__init__(handlers, **kwargs)
 
-    def _check_bindings(
+    def _check_handlers(
         self,
-        bindings,
+        handlers,
     ):
-        for binding in bindings:
-            rule, handler_class = self._unpack_binding(binding)
+        for handler in handlers:
+            rule, handler_class = self._unpack_handler(handler)
             if not issubclass(handler_class, AnnotatedHandler):
                 continue
 
@@ -408,51 +420,51 @@ class Application(tornado.web.Application):
         )
         assert not is_using_positional_path_args, msg
 
-    def _set_params_to_handlers(self, bindings):
-        for binding in bindings:
-            rule, handler_class = self._unpack_binding(binding)
+    def _set_params_to_handlers(self, handlers):
+        for handler in handlers:
+            rule, handler_class = self._unpack_handler(handler)
             if not issubclass(handler_class, AnnotatedHandler):
                 continue
             handler_class._set_params(rule)
 
-    def _unpack_binding(self, binding):
-        if isinstance(binding, tornado.routing.URLSpec):
-            rule = binding.regex
-            handler_class = binding.handler_class
+    def _unpack_handler(self, handler):
+        if isinstance(handler, tornado.routing.URLSpec):
+            rule = handler.regex
+            handler_class = handler.handler_class
         else:
-            rule, *_extras = binding
+            rule, *_extras = handler
             handler_class = _extras[0]
             rule = re.compile(rule)
 
         return rule, handler_class
 
-    def _create_api_spec(self, bindings):
+    def _create_api_spec(self, handlers):
         self.api_spec = TornOpenAPISpec(
             title="tornado-server",
             version="1.0.0",
             openapi_version="3.0.0",
             plugins=[TornOpenPlugin()],
         )
-        for binding in bindings:
-            if not issubclass(binding.handler_class, AnnotatedHandler):
+        for handler in handlers:
+            if not issubclass(handler.handler_class, AnnotatedHandler):
                 continue
             self.api_spec.path(
-                url_spec=binding,
-                handler_class=binding.handler_class,
-                description=binding.handler_class.__doc__,
+                url_spec=handler,
+                handler_class=handler.handler_class,
+                description=handler.handler_class.__doc__,
             )
 
-    def _add_openapi_json_binding(self, bindings, openapi_route):
+    def _add_openapi_json_handler(self, handlers, openapi_route):
         if openapi_route:
-            bindings.append(tornado.web.url(openapi_route, OpenAPISpecJsonHandler))
-        return bindings
+            handlers.append(tornado.web.url(openapi_route, OpenAPISpecJsonHandler))
+        return handlers
 
-    def _add_openapi_yaml_binding(self, bindings, openapi_route):
+    def _add_openapi_yaml_handler(self, handlers, openapi_route):
         if openapi_route:
-            bindings.append(tornado.web.url(openapi_route, OpenAPISpecYAMLHandler))
-        return bindings
+            handlers.append(tornado.web.url(openapi_route, OpenAPISpecYAMLHandler))
+        return handlers
 
-    def _add_redoc_binding(self, bindings, redoc_route, openapi_route):
+    def _add_redoc_handler(self, handlers, redoc_route, openapi_route):
         if redoc_route:
-            bindings.append(tornado.web.url(redoc_route, RedocHandler, {"openapi_route": openapi_route}))
-        return bindings
+            handlers.append(tornado.web.url(redoc_route, RedocHandler, {"openapi_route": openapi_route}))
+        return handlers
