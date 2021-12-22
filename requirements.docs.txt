@@ -1,0 +1,4 @@
+-r requirements.txt
+mkdocs-material==8.1.3
+mkdocstrings==0.16.2
+tomli==2.0.0
