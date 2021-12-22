@@ -1,0 +1,23 @@
+site_name: TornOpen
+
+nav:
+  - Quick start: introduction.md
+  - Application: application.md
+  - AnnotatedHandler: request_handler.md
+theme:
+  name: material
+
+markdown_extensions:
+  - toc:
+      permalink: True
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+
+plugins:
+  - search
+  - mkdocstrings:
+      watch:
+        - torn_open

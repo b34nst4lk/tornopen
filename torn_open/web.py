@@ -370,7 +370,7 @@ class Application(tornado.web.Application):
     """
     The Application class subclasses Tornado's Application class and adds additional options for customizing the OpenAPI and Redoc routes. On initialization, the Application class wil review the handlers and generate OpenAPI spec.
 
-    If you are adopting TornOpen to an existing Tornado application, you can simply replace the Tornado's Application class with TornOpen's Application class.
+    If you are adopting TornOpen to an existing Tornado application, you can simply replace the Tornado's Application class with TornOpen's Application class. TornOpen's Application is able to work with Tornado's RequestHandler.
     """
     def __init__(
         self,
@@ -379,7 +379,7 @@ class Application(tornado.web.Application):
         openapi_yaml_route: str="/openapi.yaml",
         openapi_json_route: str="/openapi.json",
         redoc_route:str ="/redoc",
-        **kwargs,
+        **settings,
     ):
         """
         Arguments:
@@ -387,6 +387,7 @@ class Application(tornado.web.Application):
             openapi_yaml_route: Route for openapi.yaml
             openapi_json_route: Route for openapi.json
             redoc_route: Route for redoc
+            **settings: [Settings](https://www.tornadoweb.org/en/stable/web.html#tornado.web.Application.settings) for Tornado's Application 
         """
         self._check_handlers(handlers)
         self._set_params_to_handlers(handlers)
@@ -394,7 +395,7 @@ class Application(tornado.web.Application):
         self._add_openapi_json_handler(handlers, openapi_json_route)
         self._add_openapi_yaml_handler(handlers, openapi_yaml_route)
         self._add_redoc_handler(handlers, redoc_route, openapi_json_route)
-        super().__init__(handlers, **kwargs)
+        super().__init__(handlers, **settings)
 
     def _check_handlers(
         self,
