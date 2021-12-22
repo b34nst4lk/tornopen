@@ -402,6 +402,8 @@ class Application(tornado.web.Application):
     ):
         for handler in handlers:
             rule, handler_class = self._unpack_handler(handler)
+            if not inspect.isclass(handler_class):
+                continue
             if not issubclass(handler_class, AnnotatedHandler):
                 continue
 
@@ -423,6 +425,8 @@ class Application(tornado.web.Application):
     def _set_params_to_handlers(self, handlers):
         for handler in handlers:
             rule, handler_class = self._unpack_handler(handler)
+            if not inspect.isclass(handler_class):
+                continue
             if not issubclass(handler_class, AnnotatedHandler):
                 continue
             handler_class._set_params(rule)
@@ -431,6 +435,9 @@ class Application(tornado.web.Application):
         if isinstance(handler, tornado.routing.URLSpec):
             rule = handler.regex
             handler_class = handler.handler_class
+        elif isinstance(handler, tornado.routing.Rule):
+            rule = handler.matcher.regex
+            handler_class = handler.target
         else:
             rule, *_extras = handler
             handler_class = _extras[0]
@@ -446,6 +453,8 @@ class Application(tornado.web.Application):
             plugins=[TornOpenPlugin()],
         )
         for handler in handlers:
+            if not hasattr(handler, "handler_class"):
+                continue
             if not issubclass(handler.handler_class, AnnotatedHandler):
                 continue
             self.api_spec.path(
