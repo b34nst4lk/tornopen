@@ -2,8 +2,7 @@ import pytest
 import json
 
 from tornado.web import url
-from torn_open.web import Application, AnnotatedHandler
-from torn_open.models import ClientError
+from torn_open import Application, AnnotatedHandler, ClientError
 
 
 @pytest.fixture

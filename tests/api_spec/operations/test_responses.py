@@ -5,7 +5,7 @@ import pytest
 
 from tornado.web import url
 
-from torn_open.web import Application, AnnotatedHandler
+from torn_open import Application, AnnotatedHandler
 from torn_open.api_spec import tags, summary
 from torn_open.models import RequestModel, ResponseModel, ClientError
 

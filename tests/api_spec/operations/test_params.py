@@ -5,7 +5,7 @@ import pytest
 
 from tornado.web import url
 
-from torn_open.web import Application, AnnotatedHandler
+from torn_open import Application, AnnotatedHandler
 
 
 @pytest.fixture

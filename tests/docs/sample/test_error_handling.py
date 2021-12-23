@@ -47,5 +47,4 @@ async def test_get_openapi_json(http_client, base_url):
 
     assert response.code == 200
     response_body = json.loads(response.body)
-    print(response_body)
     assert "/error" in response_body["paths"]

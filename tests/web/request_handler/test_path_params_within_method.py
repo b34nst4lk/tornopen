@@ -3,7 +3,7 @@ from enum import Enum, IntEnum
 from typing import List
 
 from tornado.web import url
-from torn_open.web import Application, AnnotatedHandler
+from torn_open import Application, AnnotatedHandler
 
 
 @pytest.fixture

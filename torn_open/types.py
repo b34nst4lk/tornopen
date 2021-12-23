@@ -48,10 +48,9 @@ def is_optional(parameter_type: Union[type, Tuple[type]]):
 def is_generic(parameter_type, types):
     if parameter_type in types:
         return True
-    return (
-        isinstance(parameter_type, GenericAliases)
-        and parameter_type.__origin__ in types
-    )
+    if not isinstance(parameter_type, GenericAliases):
+        return False
+    return parameter_type.__origin__ in types
 
 
 is_list = functools.partial(is_generic, types=(list, List))

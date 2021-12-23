@@ -1,8 +1,7 @@
 from tornado.web import url
 from pydantic import BaseModel
 
-from torn_open.web import Application, AnnotatedHandler
-from torn_open.models import RequestModel, ResponseModel
+from torn_open import Application, AnnotatedHandler, RequestModel, ResponseModel
 
 
 def test_create_app_with_duplicated_schemas():

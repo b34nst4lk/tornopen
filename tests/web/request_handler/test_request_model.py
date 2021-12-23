@@ -3,8 +3,7 @@ import json
 from enum import Enum
 
 from tornado.web import url
-from torn_open.web import Application, AnnotatedHandler
-from torn_open.models import RequestModel
+from torn_open import Application, AnnotatedHandler, RequestModel
 
 
 @pytest.fixture
