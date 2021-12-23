@@ -4,6 +4,7 @@ nav:
   - Quick start: introduction.md
   - Application: application.md
   - AnnotatedHandler: request_handler.md
+  - Error Handling: error_handling.md
 theme:
   name: material
 
