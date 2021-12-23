@@ -4,6 +4,7 @@ nav:
   - Quick start: introduction.md
   - Application: application.md
   - AnnotatedHandler: request_handler.md
+  - Type Annotations and Schema: type_annotations.md
 theme:
   name: material
 
