@@ -10,9 +10,8 @@ from tornado.httputil import (
     ResponseStartLine,
     HTTPHeaders,
 )
-from tornado.web import RequestHandler, url
-from tornado.httpclient import HTTPResponse
-from tornado.routing import Rule, PathMatches, RuleRouter
+from tornado.web import RequestHandler
+from tornado.routing import Rule, PathMatches
 from torn_open import Application
 
 

@@ -1,7 +1,5 @@
 import pytest
 import json
-from typing import Optional, List, Tuple
-from enum import Enum
 
 from tornado.httputil import url_concat
 from tornado.web import url

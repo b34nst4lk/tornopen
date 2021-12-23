@@ -1,5 +1,3 @@
-import pytest
-
 from tornado.web import url
 from pydantic import BaseModel
 

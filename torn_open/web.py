@@ -415,7 +415,7 @@ class Application(tornado.web.Application):
         rules,
     ):
         for rule in rules:
-            regex, target= self._unpack_handler(rule)
+            regex, target = self._unpack_handler(rule)
             if not inspect.isclass(target):
                 continue
             if not issubclass(target, AnnotatedHandler):
