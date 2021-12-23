@@ -2,12 +2,16 @@ import inspect
 import json
 import re
 
+
 from typing import (
     Any,
     Callable,
     Dict,
     Pattern,
     Type,
+    List,
+    Union,
+    Tuple,
 )
 
 import tornado.web
@@ -17,6 +21,8 @@ import tornado.concurrent
 import tornado.ioloop
 import tornado.options
 import tornado.log
+
+from tornado.routing import URLSpec, Rule
 
 import pydantic
 
@@ -48,7 +54,9 @@ class _HandlerClassParams:
             self._set_json_param_names(method)
             self._set_response_models(method)
 
-    def _set_path_param_names(self, method, rule: Pattern):
+    def _set_path_param_names(self, method, rule: Union[Pattern, str]):
+        if isinstance(rule, str):
+            return
         path_params = [param for param in rule.groupindex.keys()]
         signature = inspect.signature(method)
         for param_name, parameter in signature.parameters.items():
@@ -193,7 +201,11 @@ class _HandlerParamsParser:
             return parameter.default
         elif types.is_optional(parameter_type):
             return None
-        raise tornado.web.MissingArgumentError(name)
+        raise models.ClientError(
+            status_code=400,
+            error_type="missing_argument",
+            message=f"{name} is required",
+        )
 
     def _parse_json_param(self, http_method):
         param_name, parameter = self.handler_class_params.json_param[http_method]
@@ -331,7 +343,6 @@ class OpenAPISpecYAMLHandler(tornado.web.RequestHandler):
         self.write(spec)
 
 
-
 class RedocHandler(tornado.web.RequestHandler):
     def initialize(self, openapi_route: str):
         self.openapi_route = openapi_route
@@ -372,13 +383,14 @@ class Application(tornado.web.Application):
 
     If you are adopting TornOpen to an existing Tornado application, you can simply replace the Tornado's Application class with TornOpen's Application class. TornOpen's Application is able to work with Tornado's RequestHandler.
     """
+
     def __init__(
         self,
         handlers,
         *,
-        openapi_yaml_route: str="/openapi.yaml",
-        openapi_json_route: str="/openapi.json",
-        redoc_route:str ="/redoc",
+        openapi_yaml_route: str = "/openapi.yaml",
+        openapi_json_route: str = "/openapi.json",
+        redoc_route: str = "/redoc",
         **settings,
     ):
         """
@@ -387,9 +399,10 @@ class Application(tornado.web.Application):
             openapi_yaml_route: Route for openapi.yaml
             openapi_json_route: Route for openapi.json
             redoc_route: Route for redoc
-            **settings: [Settings](https://www.tornadoweb.org/en/stable/web.html#tornado.web.Application.settings) for Tornado's Application 
+            **settings: [Settings](https://www.tornadoweb.org/en/stable/web.html#tornado.web.Application.settings) for Tornado's Application
         """
-        self._check_handlers(handlers)
+        self._check_rules(handlers)
+        handlers = self._clean_rules(handlers)
         self._set_params_to_handlers(handlers)
         self._create_api_spec(handlers)
         self._add_openapi_json_handler(handlers, openapi_json_route)
@@ -397,18 +410,36 @@ class Application(tornado.web.Application):
         self._add_redoc_handler(handlers, redoc_route, openapi_json_route)
         super().__init__(handlers, **settings)
 
-    def _check_handlers(
+    def _check_rules(
         self,
-        handlers,
+        rules,
     ):
-        for handler in handlers:
-            rule, handler_class = self._unpack_handler(handler)
-            if not inspect.isclass(handler_class):
+        for rule in rules:
+            regex, target= self._unpack_handler(rule)
+            if not inspect.isclass(target):
                 continue
-            if not issubclass(handler_class, AnnotatedHandler):
+            if not issubclass(target, AnnotatedHandler):
                 continue
 
-            self._assert_only_named_path_params(rule, handler_class)
+            self._assert_only_named_path_params(regex, target)
+
+    def _clean_rules(
+        self,
+        rules: List[
+            Union[
+                Tuple[str, tornado.web.RequestHandler],
+                Rule,
+                URLSpec,
+            ]
+        ],
+    ) -> List[Union[Rule, URLSpec]]:
+        processed_rules = []
+        for rule in rules:
+            if isinstance(rule, tuple):
+                matcher, *extras = rule
+                rule = tornado.web.url(matcher, *extras)
+            processed_rules.append(rule)
+        return processed_rules
 
     def _assert_only_named_path_params(
         self,
@@ -433,11 +464,11 @@ class Application(tornado.web.Application):
             handler_class._set_params(rule)
 
     def _unpack_handler(self, handler):
-        if isinstance(handler, tornado.routing.URLSpec):
+        if isinstance(handler, URLSpec):
             rule = handler.regex
             handler_class = handler.handler_class
-        elif isinstance(handler, tornado.routing.Rule):
-            rule = handler.matcher.regex
+        elif isinstance(handler, Rule):
+            rule = handler.matcher
             handler_class = handler.target
         else:
             rule, *_extras = handler
@@ -455,6 +486,8 @@ class Application(tornado.web.Application):
         )
         for handler in handlers:
             if not hasattr(handler, "handler_class"):
+                continue
+            if not inspect.isclass(handler.handler_class):
                 continue
             if not issubclass(handler.handler_class, AnnotatedHandler):
                 continue
@@ -476,5 +509,9 @@ class Application(tornado.web.Application):
 
     def _add_redoc_handler(self, handlers, redoc_route, openapi_route):
         if redoc_route:
-            handlers.append(tornado.web.url(redoc_route, RedocHandler, {"openapi_route": openapi_route}))
+            handlers.append(
+                tornado.web.url(
+                    redoc_route, RedocHandler, {"openapi_route": openapi_route}
+                )
+            )
         return handlers

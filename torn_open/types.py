@@ -96,7 +96,7 @@ def cast_primitive(parameter_type, val):
     try:
         return parameter_type(val)
     except ValueError as e:
-        raise ValidationError("invalid value", val) from e
+        raise ValidationError("invalid_value", val) from e
 
 
 def cast_bool(val):
