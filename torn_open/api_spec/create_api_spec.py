@@ -1,16 +1,26 @@
-import re
 import inspect
-from typing import Pattern, Type, List, Union, Tuple
+from typing import Pattern, Union, Tuple, Generator
 
-import tornado
-from tornado.routing import URLSpec, Rule
+from tornado.web import url, RequestHandler, Application
+from tornado.routing import URLSpec, Rule, RuleRouter, Matcher
 
 from torn_open.annotated_handler import AnnotatedHandler
 from torn_open.api_spec.core import TornOpenAPISpec
 from torn_open.api_spec.plugin import TornOpenPlugin
 
+_TornadoRule = Union[
+    URLSpec,
+    Rule,
+]
+_TupleRule = Tuple[str, RequestHandler]
 
-def is_annotated_handler_class(item):
+_Rule = Union[
+    _TupleRule,
+    _TornadoRule,
+]
+
+
+def is_annotated_handler_class(item) -> bool:
     if not item:
         return False
     if not inspect.isclass(item):
@@ -18,95 +28,64 @@ def is_annotated_handler_class(item):
     return issubclass(item, AnnotatedHandler)
 
 
-def _assert_only_named_path_params(
-    rule: Pattern,
-    handler_class: Type[AnnotatedHandler],
-):
+def _assert_only_named_path_params(rule: Pattern):
     is_using_positional_path_args = rule.groups > len(rule.groupindex)
 
-    msg = (
-        f"{rule.pattern} | {handler_class.__name__}:"
-        " positional path args not allowed"
-    )
+    msg = f"{rule.pattern}:" " positional path args not allowed"
     assert not is_using_positional_path_args, msg
 
 
-def _unpack_handler(handler):
-    if isinstance(handler, URLSpec):
-        rule = handler.regex
-        handler_class = handler.handler_class
-    elif isinstance(handler, Rule):
-        rule = handler.matcher
-        handler_class = handler.target
+def _unpack_rule(
+    rule: _Rule,
+) -> Tuple[Union[Matcher, Pattern], Union[Application, RuleRouter, RequestHandler]]:
+    processed_rule = _clean_rule(rule)
+    if isinstance(processed_rule, URLSpec):
+        matcher = processed_rule.regex
+        target = processed_rule.handler_class
     else:
-        rule, *_extras = handler
-        handler_class = _extras[0]
-        rule = re.compile(rule)
-
-    return rule, handler_class
+        matcher = processed_rule.matcher
+        target = processed_rule.target
+    return matcher, target
 
 
-def _check_rules(
+def _clean_rule(rule: _Rule) -> _TornadoRule:
+    if isinstance(rule, tuple):
+        rule = _clean_tuple(rule)
+    return rule
+
+
+def _clean_tuple(rule: _TupleRule) -> URLSpec:
+    matcher, *extras = rule
+    rule = url(matcher, *extras)
+    return rule
+
+
+def _gather_rules(
     rules,
-):
+) -> Generator[Tuple[Union[Matcher, Pattern], AnnotatedHandler], None, None]:
     for rule in rules:
-        regex, target = _unpack_handler(rule)
-        if not is_annotated_handler_class(target):
-            continue
-
-        _assert_only_named_path_params(regex, target)
-
-
-def _clean_rules(
-    rules: List[
-        Union[
-            Tuple[str, tornado.web.RequestHandler],
-            Rule,
-            URLSpec,
-        ]
-    ],
-) -> List[Union[Rule, URLSpec]]:
-    processed_rules = []
-    for rule in rules:
-        if isinstance(rule, tuple):
-            matcher, *extras = rule
-            rule = tornado.web.url(matcher, *extras)
-        processed_rules.append(rule)
-    return processed_rules
+        matcher, target = _unpack_rule(rule)
+        if is_annotated_handler_class(target):
+            yield matcher, target
+        elif isinstance(target, Application):
+            yield from _gather_rules(target.wildcard_router.rules)
+        elif isinstance(target, RuleRouter):
+            yield from _gather_rules(target.rules)
 
 
-def _set_params_to_handlers(rules):
-    for rule in rules:
-        matcher, target = _unpack_handler(rule)
-        if not is_annotated_handler_class(target):
-            continue
-        target._set_params(matcher)
-
-
-def _setup_api_spec(rules):
+def create_api_spec(rules):
     api_spec = TornOpenAPISpec(
         title="tornado-server",
         version="1.0.0",
         openapi_version="3.0.0",
         plugins=[TornOpenPlugin()],
     )
-    for rule in rules:
-        if not hasattr(rule, "handler_class"):
-            continue
-        if not inspect.isclass(rule.handler_class):
-            continue
-        if not issubclass(rule.handler_class, AnnotatedHandler):
-            continue
+    for matcher, target in _gather_rules(rules):
+        _assert_only_named_path_params(matcher)
+        target._set_params(matcher)
         api_spec.path(
-            url_spec=rule,
-            handler_class=rule.handler_class,
-            description=rule.handler_class.__doc__,
+            url_spec=url(matcher, target),
+            handler_class=target,
+            description=target.__doc__,
         )
     return api_spec
-
-
-def create_api_spec(rules):
-    _check_rules(rules)
-    rules = _clean_rules(rules)
-    _set_params_to_handlers(rules)
-    return _setup_api_spec(rules)
