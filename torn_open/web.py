@@ -1,20 +1,16 @@
-import tornado.web
-import tornado.routing
-import tornado.iostream
-import tornado.concurrent
-import tornado.ioloop
-import tornado.options
-import tornado.log
+from tornado.web import Application as BaseApplication, url
 
 from torn_open.api_spec import create_api_spec
 from torn_open.handlers import OpenAPISpecHandler, RedocHandler
 
 
-class Application(tornado.web.Application):
+class Application(BaseApplication):
     """
-    The Application class subclasses Tornado's Application class and adds additional options for customizing the OpenAPI and Redoc routes. On initialization, the Application class wil review the handlers and generate OpenAPI spec.
+    The Application class subclasses Tornado's Application class and adds additional options for customizing the OpenAPI and Redoc routes.
+    On initialization, the Application class wil review the handlers and generate OpenAPI spec.
 
-    If you are adopting TornOpen to an existing Tornado application, you can simply replace the Tornado's Application class with TornOpen's Application class. TornOpen's Application is able to work with Tornado's RequestHandler.
+    If you are adopting TornOpen to an existing Tornado application, you can simply replace the Tornado's Application class with TornOpen's Application class.
+    TornOpen's Application is able to work with Tornado's RequestHandler.
     """
 
     def __init__(
@@ -44,8 +40,8 @@ class Application(tornado.web.Application):
         self.add_handlers(
             r".*",
             [
-                tornado.web.url(json_route, OpenAPISpecHandler, {"spec": self.api_spec.to_dict()}),
-                tornado.web.url(yaml_route, OpenAPISpecHandler, {"spec": self.api_spec.to_yaml()}),
-                tornado.web.url(redoc_route, RedocHandler, {"openapi_route": json_route}),
+                url(json_route, OpenAPISpecHandler, {"get_spec": self.api_spec.to_dict}),
+                url(yaml_route, OpenAPISpecHandler, {"get_spec": self.api_spec.to_yaml}),
+                url(redoc_route, RedocHandler, {"openapi_route": json_route}),
             ],
         )

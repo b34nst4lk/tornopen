@@ -68,7 +68,7 @@ def _gather_rules(
         if is_annotated_handler_class(target):
             yield matcher, target
         elif isinstance(target, Application):
-            yield from _gather_rules(target.wildcard_router.rules)
+            yield from _gather_rules(target.default_router.rules)
         elif isinstance(target, RuleRouter):
             yield from _gather_rules(target.rules)
 

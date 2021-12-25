@@ -1,10 +1,12 @@
+from typing import Callable, Union
+
 from tornado.web import RequestHandler
 
 
 class OpenAPISpecHandler(RequestHandler):
-    def initialize(self, spec, *args, **kwargs):
+    def initialize(self, get_spec: Callable[[], Union[dict, str]], *args, **kwargs):
         super().initialize(*args, **kwargs)
-        self.spec = spec
+        self.spec = get_spec()
 
     def get(self):
         self.write(self.spec)

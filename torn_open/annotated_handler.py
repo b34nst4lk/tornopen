@@ -238,7 +238,6 @@ class AnnotatedHandler(tornado.web.RequestHandler):
                     status_code=405, error_type="unsupported_method"
                 )
 
-            self.path_args = [self.decode_argument(arg) for arg in args]
             self.path_kwargs = dict(
                 (k, self.decode_argument(v, name=k)) for (k, v) in kwargs.items()
             )
