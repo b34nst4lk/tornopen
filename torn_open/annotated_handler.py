@@ -9,13 +9,7 @@ from typing import (
     Union,
 )
 
-import tornado.web
-import tornado.routing
-import tornado.iostream
-import tornado.concurrent
-import tornado.ioloop
-import tornado.options
-import tornado.log
+import tornado
 
 import pydantic
 
@@ -138,8 +132,6 @@ class _HandlerParamsParser:
         cls_http_method: Callable,
         path_kwargs,
     ) -> Dict[str, Any]:
-        # In a route, you can either have path_args or path_kwargs,
-        # and not both, so we process both them differently
         method = cls_http_method.__name__
 
         path_kwargs = self._parse_path_params(path_kwargs)

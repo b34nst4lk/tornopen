@@ -40,8 +40,12 @@ class Application(BaseApplication):
         self.add_handlers(
             r".*",
             [
-                url(json_route, OpenAPISpecHandler, {"get_spec": self.api_spec.to_dict}),
-                url(yaml_route, OpenAPISpecHandler, {"get_spec": self.api_spec.to_yaml}),
+                url(
+                    json_route, OpenAPISpecHandler, {"get_spec": self.api_spec.to_dict}
+                ),
+                url(
+                    yaml_route, OpenAPISpecHandler, {"get_spec": self.api_spec.to_yaml}
+                ),
                 url(redoc_route, RedocHandler, {"openapi_route": json_route}),
             ],
         )
