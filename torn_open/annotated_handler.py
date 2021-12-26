@@ -29,6 +29,7 @@ class _HandlerClassParams:
     """
 
     def __init__(self, handler_class, rule):
+        self.handler_class = handler_class
         self.path_params = {}
         self.query_params = {}
         self.json_param = {}
@@ -54,6 +55,12 @@ class _HandlerClassParams:
             if param_name not in path_params:
                 continue
             self.path_params[param_name] = parameter
+
+        msg = (
+            f"{rule} | {self.handler_class.__name__}:"
+            f" not all path params in rule declared in handler {method.__name__}"
+        )
+        assert len(path_params) == len(self.path_params), msg
 
     def _set_query_param_names(self, method):
         self.query_params[method.__name__] = {}
@@ -92,7 +99,7 @@ class _HandlerClassParams:
 
         if len(json_params) > 1:
             raise ValueError(
-                f"{self.__name__}.{method.__name__}:only one json param allowed"
+                f"{self.handler_class.__name__}.{method.__name__}:only one json param allowed"
             )
 
     def _is_json_param(self, param_name, parameter, method) -> bool:
