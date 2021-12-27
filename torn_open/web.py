@@ -9,7 +9,7 @@ class Application(BaseApplication):
     The Application class subclasses Tornado's Application class and adds additional options for customizing the OpenAPI and Redoc routes.
     On initialization, the Application class wil review the handlers and generate OpenAPI spec.
 
-    If you are adopting TornOpen to an existing Tornado application, you can simply replace the Tornado's Application class with TornOpen's Application class.
+    If you are using TornOpen on an existing Tornado application, you can simply replace the Tornado's Application class with TornOpen's Application class.
     TornOpen's Application is able to work with Tornado's RequestHandler.
     """
 

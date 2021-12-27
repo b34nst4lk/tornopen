@@ -5,6 +5,7 @@ nav:
   - Application: application.md
   - AnnotatedHandler: request_handler.md
   - Type Annotations and Schema: type_annotations.md
+  - Decorators: decorators.md
   - Error Handling: error_handling.md
 theme:
   name: material
@@ -21,5 +22,13 @@ markdown_extensions:
 plugins:
   - search
   - mkdocstrings:
+      handlers:
+        python:
+          rendering:
+            show_root_heading: false
+            show_source: false
+            show_object_full_path: false
+            show_root_full_path: false
+            show_root_toc_entry: false
       watch:
         - torn_open
