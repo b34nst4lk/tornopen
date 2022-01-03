@@ -40,11 +40,23 @@ def _unpack_rule(
 ) -> Tuple[Union[Matcher, Pattern], Union[Application, RuleRouter, RequestHandler]]:
     processed_rule = _clean_rule(rule)
     if isinstance(processed_rule, URLSpec):
-        matcher = processed_rule.regex
-        target = processed_rule.handler_class
-    else:
-        matcher = processed_rule.matcher
-        target = processed_rule.target
+        return _unpack_URLSpec(processed_rule)
+    return _unpack_Rule(processed_rule)
+
+
+def _unpack_URLSpec(
+    rule: URLSpec,
+) -> Tuple[Union[Matcher, Pattern], Union[Application, RuleRouter, RequestHandler]]:
+    matcher = rule.regex
+    target = rule.handler_class
+    return matcher, target
+
+
+def _unpack_Rule(
+    rule: Rule,
+) -> Tuple[Union[Matcher, Pattern], Union[Application, RuleRouter, RequestHandler]]:
+    matcher = rule.matcher
+    target = rule.target
     return matcher, target
 
 
