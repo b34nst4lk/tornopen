@@ -9,7 +9,7 @@ README = (HERE / "README.md").read_text()
 
 setup(
     name="torn_open",
-    version="0.0.2",
+    version="0.0.3",
     python_requires=">=3.6.*",
     description="Tornado x OpenAPI x Redoc",
     long_description=README,
