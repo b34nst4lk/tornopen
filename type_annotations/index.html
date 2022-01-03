@@ -13,7 +13,7 @@
     
     
       
-        <title>AnnotatedHandler - TornOpen</title>
+        <title>Type Annotations and Schema - TornOpen</title>
       
     
     
@@ -60,7 +60,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#the-annotatedhandler-class" class="md-skip">
+        <a href="#type-annotations-and-models" class="md-skip">
           Skip to content
         </a>
       
@@ -93,7 +93,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              AnnotatedHandler
+              Type Annotations and Schema
             
           </span>
         </div>
@@ -207,6 +207,21 @@
 
   
   
+  
+    <li class="md-nav__item">
+      <a href="../request_handler/" class="md-nav__link">
+        AnnotatedHandler
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
     
   
   
@@ -219,12 +234,12 @@
       
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
-          AnnotatedHandler
+          Type Annotations and Schema
           <span class="md-nav__icon md-icon"></span>
         </label>
       
       <a href="./" class="md-nav__link md-nav__link--active">
-        AnnotatedHandler
+        Type Annotations and Schema
       </a>
       
         
@@ -243,37 +258,23 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#differences" class="md-nav__link">
-    Differences
+  <a href="#supported-type-annotations" class="md-nav__link">
+    Supported type annotations
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#parameters" class="md-nav__link">
-    Parameters
-  </a>
-  
-    <nav class="md-nav" aria-label="Parameters">
+    <nav class="md-nav" aria-label="Supported type annotations">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#path-parameters" class="md-nav__link">
-    Path parameters
+  <a href="#primitives" class="md-nav__link">
+    Primitives
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#query-parameters" class="md-nav__link">
-    Query parameters
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#json-body" class="md-nav__link">
-    JSON body
+  <a href="#generics" class="md-nav__link">
+    Generics
   </a>
   
 </li>
@@ -283,25 +284,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#request-and-response-models" class="md-nav__link">
+    Request and response models
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
       
-    </li>
-  
-
-    
-      
-      
-      
-
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../type_annotations/" class="md-nav__link">
-        Type Annotations and Schema
-      </a>
     </li>
   
 
@@ -363,43 +356,36 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#differences" class="md-nav__link">
-    Differences
+  <a href="#supported-type-annotations" class="md-nav__link">
+    Supported type annotations
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#parameters" class="md-nav__link">
-    Parameters
-  </a>
-  
-    <nav class="md-nav" aria-label="Parameters">
+    <nav class="md-nav" aria-label="Supported type annotations">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#path-parameters" class="md-nav__link">
-    Path parameters
+  <a href="#primitives" class="md-nav__link">
+    Primitives
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#query-parameters" class="md-nav__link">
-    Query parameters
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#json-body" class="md-nav__link">
-    JSON body
+  <a href="#generics" class="md-nav__link">
+    Generics
   </a>
   
 </li>
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#request-and-response-models" class="md-nav__link">
+    Request and response models
+  </a>
   
 </li>
       
@@ -416,69 +402,76 @@
               
                 
 
-<h1 id="the-annotatedhandler-class">The AnnotatedHandler class<a class="headerlink" href="#the-annotatedhandler-class" title="Permanent link">&para;</a></h1>
-<p>The AnnotatedHandler class subclasses from Tornado's RequestHandler. 
-Subclasses of the AnnotatedHandler are able to
-- declare path and query params, json body model and the response model in the function signature
-- validate, type cast and pass in declared params before declared methods are executed</p>
-<h2 id="differences">Differences<a class="headerlink" href="#differences" title="Permanent link">&para;</a></h2>
-<p>With Tornado, we subclass from the RequestHandler and define the path parameter in the overridden <code>get</code> method. 
-We then retrieve query params and json body by using methods like <code>get_query_argument</code> and parsing the request body.
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1"></a><span class="kn">from</span> <span class="nn">tornado.escape</span> <span class="kn">import</span> <span class="n">json_decode</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2"></a><span class="kn">from</span> <span class="nn">tornado.web</span> <span class="kn">import</span> <span class="n">RequestHandler</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3"></a>
-<a id="__codelineno-0-4" name="__codelineno-0-4"></a>
-<a id="__codelineno-0-5" name="__codelineno-0-5"></a><span class="k">class</span> <span class="nc">TornadoRequestHandler</span><span class="p">(</span><span class="n">RequestHandler</span><span class="p">):</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6"></a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a_path_param</span><span class="p">):</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7"></a>        <span class="n">a_query_param</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_query_argument</span><span class="p">(</span><span class="s2">&quot;a_query_param&quot;</span><span class="p">))</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8"></a>        <span class="n">a_request_body</span> <span class="o">=</span> <span class="n">json_decode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">body</span><span class="p">)</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10"></a>            <span class="p">{</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11"></a>                <span class="s2">&quot;a_path_param&quot;</span><span class="p">:</span> <span class="n">a_path_param</span><span class="p">,</span>
-<a id="__codelineno-0-12" name="__codelineno-0-12"></a>                <span class="s2">&quot;a_query_param&quot;</span><span class="p">:</span> <span class="n">a_query_param</span><span class="p">,</span>
-<a id="__codelineno-0-13" name="__codelineno-0-13"></a>                <span class="s2">&quot;a_request_body&quot;</span><span class="p">:</span> <span class="n">a_request_body</span><span class="p">,</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14"></a>            <span class="p">}</span>
-<a id="__codelineno-0-15" name="__codelineno-0-15"></a>        <span class="p">)</span>
-</code></pre></div></p>
-<p>For subclasses of <code>AnnotatedHandler</code>, the annotated function arguments are used to parse the incoming request for the required fields, and passed into the functions. </p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1"></a><span class="kn">from</span> <span class="nn">torn_open</span> <span class="kn">import</span> <span class="n">AnnotatedHandler</span><span class="p">,</span> <span class="n">RequestModel</span><span class="p">,</span> <span class="n">ResponseModel</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2"></a>
-<a id="__codelineno-1-3" name="__codelineno-1-3"></a>
-<a id="__codelineno-1-4" name="__codelineno-1-4"></a><span class="k">class</span> <span class="nc">ARequestBody</span><span class="p">(</span><span class="n">RequestModel</span><span class="p">):</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5"></a>    <span class="n">a_body_param</span><span class="p">:</span> <span class="nb">bool</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6"></a>
-<a id="__codelineno-1-7" name="__codelineno-1-7"></a>
-<a id="__codelineno-1-8" name="__codelineno-1-8"></a><span class="k">class</span> <span class="nc">AResponseModel</span><span class="p">(</span><span class="n">ResponseModel</span><span class="p">):</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9"></a>    <span class="n">a_path_param</span><span class="p">:</span> <span class="nb">str</span>
-<a id="__codelineno-1-10" name="__codelineno-1-10"></a>    <span class="n">a_query_param</span><span class="p">:</span> <span class="nb">int</span>
-<a id="__codelineno-1-11" name="__codelineno-1-11"></a>    <span class="n">request_body</span><span class="p">:</span> <span class="n">ARequestBody</span>
-<a id="__codelineno-1-12" name="__codelineno-1-12"></a>
-<a id="__codelineno-1-13" name="__codelineno-1-13"></a>
-<a id="__codelineno-1-14" name="__codelineno-1-14"></a><span class="k">class</span> <span class="nc">TornOpenAnnotatedHandler</span><span class="p">(</span><span class="n">AnnotatedHandler</span><span class="p">):</span>
-<a id="__codelineno-1-15" name="__codelineno-1-15"></a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">get</span><span class="p">(</span>
-<a id="__codelineno-1-16" name="__codelineno-1-16"></a>        <span class="bp">self</span><span class="p">,</span> <span class="n">a_path_param</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">a_query_param</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">a_request_body</span><span class="p">:</span> <span class="n">ARequestBody</span>
-<a id="__codelineno-1-17" name="__codelineno-1-17"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AResponseModel</span><span class="p">:</span>
-<a id="__codelineno-1-18" name="__codelineno-1-18"></a>        <span class="k">return</span> <span class="n">AResponseModel</span><span class="p">(</span>
-<a id="__codelineno-1-19" name="__codelineno-1-19"></a>            <span class="n">a_path_param</span><span class="o">=</span><span class="n">a_path_param</span><span class="p">,</span>
-<a id="__codelineno-1-20" name="__codelineno-1-20"></a>            <span class="n">a_query_param</span><span class="o">=</span><span class="n">a_query_param</span><span class="p">,</span>
-<a id="__codelineno-1-21" name="__codelineno-1-21"></a>            <span class="n">a_request_body</span><span class="o">=</span><span class="n">a_request_body</span><span class="p">,</span>
-<a id="__codelineno-1-22" name="__codelineno-1-22"></a>        <span class="p">)</span>
-</code></pre></div>
-<h2 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h2>
-<p>The <code>AnnotatedHandler</code> uses a set of rules to determine where the parameter should be parsed from</p>
-<h3 id="path-parameters">Path parameters<a class="headerlink" href="#path-parameters" title="Permanent link">&para;</a></h3>
-<ol>
-<li>If an argument appears in the url rule for the handler, it is treated as a path parameter</li>
-<li>1 or more path parameters can be declared in the url rule.</li>
-<li>If the url rule includes a path parameter that is not in the function signature, an error may be raised at runtime. </li>
-</ol>
-<h3 id="query-parameters">Query parameters<a class="headerlink" href="#query-parameters" title="Permanent link">&para;</a></h3>
-<p>If an argument does not appear in the url rule for the handler, and its type annotation is not a subclass of <code>torn_open.RequestModel</code>, it is treated as a query parameter.</p>
-<h3 id="json-body">JSON body<a class="headerlink" href="#json-body" title="Permanent link">&para;</a></h3>
-<ol>
-<li>If an argument does not appear in the url rule for the handler, and its type annotation is a subclass of <code>torn_open.RequestModel</code>, then it is parsed as a JSON object.</li>
-<li>Only 1 argument in a function can be annotated as a subclass of <code>torn_open.RequestModel</code>.</li>
-</ol>
+<h1 id="type-annotations-and-models">Type annotations and models<a class="headerlink" href="#type-annotations-and-models" title="Permanent link">&para;</a></h1>
+<p>Annotations in the function signature serve 2 purposes
+1. Type checking, validation and casting are done before being passed into the overridden methods in the <code>AnnotatedHandler</code>
+2. On application start, every <code>AnnotatedHandler</code> will be parsed and inspected to generate OpenAPI specifications</p>
+<h2 id="supported-type-annotations">Supported type annotations<a class="headerlink" href="#supported-type-annotations" title="Permanent link">&para;</a></h2>
+<p>The following types are currently supported, with more being planned.</p>
+<h3 id="primitives">Primitives<a class="headerlink" href="#primitives" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Python Type</th>
+<th>Javascript Type</th>
+<th>Values</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>bool</td>
+<td>boolean</td>
+<td>0, 1, "true", "false", "TruE", "False"</td>
+</tr>
+<tr>
+<td>str</td>
+<td>string</td>
+<td>"this is a string"</td>
+</tr>
+<tr>
+<td>int</td>
+<td>number</td>
+<td>1, 2, -1, 99999</td>
+</tr>
+<tr>
+<td>float</td>
+<td>number</td>
+<td>1, 2, 1.1, -1.99999</td>
+</tr>
+<tr>
+<td>Enum</td>
+<td>string</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="generics">Generics<a class="headerlink" href="#generics" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Python Type</th>
+<th>Javascript Type</th>
+<th>Values</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>List[str]</td>
+<td>array</td>
+<td>"1,2,3"</td>
+</tr>
+<tr>
+<td>Tuple[int, str]</td>
+<td>array</td>
+<td>"1,a string"</td>
+</tr>
+</tbody>
+</table>
+<p>*<em>Primitives that are currently supported are also supported as primitives for generics</em></p>
+<h2 id="request-and-response-models">Request and response models<a class="headerlink" href="#request-and-response-models" title="Permanent link">&para;</a></h2>
+<p><code>RequestModel</code> and <code>ResponseModel</code> are used for defining json request and response bodies.
+Both are subclasses from <a href="https://pydantic-docs.helpmanual.io/usage/models/">pydantic's <code>BaseModel</code></a></p>
+<p>Currently, only single models are supported; Union of models are not supported.</p>
 
               
             </article>
@@ -492,7 +485,7 @@ We then retrieve query params and json body by using methods like <code>get_quer
     <nav class="md-footer__inner md-grid" aria-label="Footer">
       
         
-        <a href="../application/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Application" rel="prev">
+        <a href="../request_handler/" class="md-footer__link md-footer__link--prev" aria-label="Previous: AnnotatedHandler" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
           </div>
@@ -501,20 +494,20 @@ We then retrieve query params and json body by using methods like <code>get_quer
               <span class="md-footer__direction">
                 Previous
               </span>
-              Application
+              AnnotatedHandler
             </div>
           </div>
         </a>
       
       
         
-        <a href="../type_annotations/" class="md-footer__link md-footer__link--next" aria-label="Next: Type Annotations and Schema" rel="next">
+        <a href="../decorators/" class="md-footer__link md-footer__link--next" aria-label="Next: Decorators" rel="next">
           <div class="md-footer__title">
             <div class="md-ellipsis">
               <span class="md-footer__direction">
                 Next
               </span>
-              Type Annotations and Schema
+              Decorators
             </div>
           </div>
           <div class="md-footer__button md-icon">

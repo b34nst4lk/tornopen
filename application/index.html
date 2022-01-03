@@ -228,13 +228,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#torn_open.web.Application" class="md-nav__link">
-    torn_open.web.Application
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#torn_open.web.Application.__init__" class="md-nav__link">
     __init__()
   </a>
@@ -259,6 +252,51 @@
     <li class="md-nav__item">
       <a href="../request_handler/" class="md-nav__link">
         AnnotatedHandler
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../type_annotations/" class="md-nav__link">
+        Type Annotations and Schema
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decorators/" class="md-nav__link">
+        Decorators
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../error_handling/" class="md-nav__link">
+        Error Handling
       </a>
     </li>
   
@@ -291,13 +329,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#torn_open.web.Application" class="md-nav__link">
-    torn_open.web.Application
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#torn_open.web.Application.__init__" class="md-nav__link">
     __init__()
   </a>
@@ -322,11 +353,13 @@
 
   <div class="doc doc-object doc-class">
 
-<a id="torn_open.web.Application"></a>
+
     <div class="doc doc-contents first">
 
-      <p>The Application class subclasses Tornado's Application class and adds additional options for customizing the OpenAPI and Redoc routes. On initialization, the Application class wil review the handlers and generate OpenAPI spec.</p>
-<p>If you are adopting TornOpen to an existing Tornado application, you can simply replace the Tornado's Application class with TornOpen's Application class. TornOpen's Application is able to work with Tornado's RequestHandler.</p>
+      <p>The Application class subclasses Tornado's Application class and adds additional options for customizing the OpenAPI and Redoc routes.
+On initialization, the Application class wil review the handlers and generate OpenAPI spec.</p>
+<p>If you are using TornOpen on an existing Tornado application, you can simply replace the Tornado's Application class with TornOpen's Application class.
+TornOpen's Application is able to work with Tornado's RequestHandler.</p>
 
 
 
@@ -346,7 +379,7 @@
 
 
 <h4 id="torn_open.web.Application.__init__" class="doc doc-heading">
-<code class="highlight language-python"><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handlers</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">openapi_yaml_route</span><span class="o">=</span><span class="s1">&#39;/openapi.yaml&#39;</span><span class="p">,</span> <span class="n">openapi_json_route</span><span class="o">=</span><span class="s1">&#39;/openapi.json&#39;</span><span class="p">,</span> <span class="n">redoc_route</span><span class="o">=</span><span class="s1">&#39;/redoc&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">settings</span><span class="p">)</span></code>
+<code class="highlight language-python"><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rules</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">openapi_yaml_route</span><span class="o">=</span><span class="s1">&#39;/openapi.yaml&#39;</span><span class="p">,</span> <span class="n">openapi_json_route</span><span class="o">=</span><span class="s1">&#39;/openapi.json&#39;</span><span class="p">,</span> <span class="n">redoc_route</span><span class="o">=</span><span class="s1">&#39;/redoc&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">settings</span><span class="p">)</span></code>
 
   <span class="doc doc-properties">
       <small class="doc doc-property doc-property-special"><code>special</code></small>
@@ -369,7 +402,7 @@
   </thead>
   <tbody>
       <tr>
-        <td><code>handlers</code></td>
+        <td><code>rules</code></td>
         <td></td>
         <td><p>list of routes and handlers</p></td>
         <td><em>required</em></td>
@@ -395,7 +428,7 @@
       <tr>
         <td><code>**settings</code></td>
         <td></td>
-        <td><p><a href="https://www.tornadoweb.org/en/stable/web.html#tornado.web.Application.settings">Settings</a> for Tornado's Application </p></td>
+        <td><p><a href="https://www.tornadoweb.org/en/stable/web.html#tornado.web.Application.settings">Settings</a> for Tornado's Application</p></td>
         <td><code>{}</code></td>
       </tr>
   </tbody>
