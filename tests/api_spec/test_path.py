@@ -5,7 +5,7 @@ import pytest
 from tornado.web import url
 
 from torn_open import Application, AnnotatedHandler
-
+from tests import assert_subset_dict
 
 @pytest.fixture
 def app():
@@ -33,11 +33,11 @@ def app():
             pass
 
     class IntEnumPathParamHandler(AnnotatedHandler):
-        class MyEnum(Enum):
+        class MyEnum2(Enum):
             hello = 1
             goodbye = 2
 
-        def get(self, path_param: MyEnum):
+        def get(self, path_param: MyEnum2):
             pass
 
     class PathWithDescriptionHandler(AnnotatedHandler):
@@ -65,6 +65,21 @@ def app():
 @pytest.fixture
 def spec(app):
     return app.api_spec.to_dict()
+
+
+@pytest.fixture
+def paths(spec):
+    return spec.get("paths") or {}
+
+
+@pytest.fixture
+def components(spec):
+    return spec.get("components") or {}
+
+
+@pytest.fixture
+def schemas(components):
+    return components.get("schemas") or {}
 
 
 def test_path_param_handler_spec(spec):
@@ -105,12 +120,15 @@ def test_int_parameter_in_path_param_handler_spec(spec):
     assert len(spec["paths"][path]["parameters"]) == 1
 
     path_param = spec["paths"][path]["parameters"][0]
-    assert path_param == {
-        "name": "path_param",
-        "in": "path",
-        "required": True,
-        "schema": {"type": "integer"},
-    }
+    assert_subset_dict(
+        path_param,
+        {
+            "name": "path_param",
+            "in": "path",
+            "required": True,
+            "schema": {"type": "integer"},
+        },
+    )
 
 
 def test_parameters_in_path_param_handler_spec(spec):
@@ -120,54 +138,57 @@ def test_parameters_in_path_param_handler_spec(spec):
     assert len(spec["paths"][path]["parameters"]) == 1
 
     path_param = spec["paths"][path]["parameters"][0]
-    assert path_param == {
-        "name": "path_param",
-        "in": "path",
-        "required": True,
-        "schema": {"type": "string"},
-    }
+    assert_subset_dict(
+        path_param,
+        {
+            "name": "path_param",
+            "in": "path",
+            "required": True,
+            "schema": {"type": "string"},
+        },
+    )
 
 
-def test_enum_schema_parameter_in_path_param_handler_spec(spec):
+def test_enum_schema_parameter_in_path_param_handler_spec(paths, schemas):
     path = "/enum/{path_param}"
-    assert "parameters" in spec["paths"][path]
+    assert "parameters" in paths[path]
 
-    assert len(spec["paths"][path]["parameters"]) == 1
+    assert len(paths[path]["parameters"]) == 1
 
-    path_param = spec["paths"][path]["parameters"][0]
-    assert path_param == {
-        "name": "path_param",
-        "in": "path",
-        "required": True,
-        "schema": {
-            "type": "string",
-            "enum": [
-                "hello",
-                "goodbye",
-            ],
+    path_param = paths[path]["parameters"][0]
+    assert_subset_dict(
+        path_param,
+        {
+            "name": "path_param",
+            "in": "path",
+            "required": True,
+            "schema": {"$ref": "#/components/schemas/MyEnum"},
         },
-    }
+    )
+
+    schema = schemas["MyEnum"]
+    assert_subset_dict(schema, {"enum": ["hello", "goodbye"]})
 
 
-def test_int_enum_schema_parameter_in_path_param_handler_spec(spec):
+def test_int_enum_schema_parameter_in_path_param_handler_spec(paths, schemas):
     path = "/int/enum/{path_param}"
-    assert "parameters" in spec["paths"][path]
+    assert "parameters" in paths[path]
 
-    assert len(spec["paths"][path]["parameters"]) == 1
+    assert len(paths[path]["parameters"]) == 1
 
-    path_param = spec["paths"][path]["parameters"][0]
-    assert path_param == {
-        "name": "path_param",
-        "in": "path",
-        "required": True,
-        "schema": {
-            "type": "string",
-            "enum": [
-                "hello",
-                "goodbye",
-            ],
+    path_param = paths[path]["parameters"][0]
+    assert_subset_dict(
+        path_param,
+        {
+            "name": "path_param",
+            "in": "path",
+            "required": True,
+            "schema": {"$ref": "#/components/schemas/MyEnum2"},
         },
-    }
+    )
+
+    schema = schemas["MyEnum2"]
+    assert_subset_dict(schema, {"enum": [1, 2]})
 
 
 def test_description_path_handler_spec(spec):

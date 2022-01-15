@@ -6,7 +6,7 @@ import pytest
 from tornado.web import url
 
 from torn_open import Application, AnnotatedHandler
-
+from tests import assert_subset_dict
 
 @pytest.fixture
 def app():
@@ -94,6 +94,16 @@ def paths(spec):
     return spec["paths"]
 
 
+@pytest.fixture
+def components(spec):
+    return spec.get("components") or {}
+
+
+@pytest.fixture
+def schemas(components):
+    return components.get("schemas") or {}
+
+
 def test_str_query_param(paths):
     operations = paths["/str_query"]
     assert "get" in operations
@@ -103,12 +113,15 @@ def test_str_query_param(paths):
     assert len(operation["parameters"]) == 1
 
     parameter = operation["parameters"][0]
-    assert parameter == {
-        "name": "query_param",
-        "in": "query",
-        "required": True,
-        "schema": {"type": "string"},
-    }
+    assert_subset_dict(
+        parameter,
+        {
+            "name": "query_param",
+            "in": "query",
+            "required": True,
+            "schema": {"type": "string"},
+        },
+    )
 
 
 def test_optional_str_query_param(paths):
@@ -120,12 +133,15 @@ def test_optional_str_query_param(paths):
     assert len(operation["parameters"]) == 1
 
     parameter = operation["parameters"][0]
-    assert parameter == {
-        "name": "optional_query_param",
-        "in": "query",
-        "required": False,
-        "schema": {"type": "string"},
-    }
+    assert_subset_dict(
+        parameter,
+        {
+            "name": "optional_query_param",
+            "in": "query",
+            "required": False,
+            "schema": {"type": "string"},
+        },
+    )
 
 
 def test_optional_str_with_default_query_param(paths):
@@ -137,18 +153,21 @@ def test_optional_str_with_default_query_param(paths):
     assert len(operation["parameters"]) == 1
 
     parameter = operation["parameters"][0]
-    assert parameter == {
-        "name": "optional_query_param_with_default",
-        "in": "query",
-        "required": False,
-        "schema": {
-            "type": "string",
-            "default": "x",
+    assert_subset_dict(
+        parameter,
+        {
+            "name": "optional_query_param_with_default",
+            "in": "query",
+            "required": False,
+            "schema": {
+                "type": "string",
+                "default": "x",
+            },
         },
-    }
+    )
 
 
-def test_enum_query_param(paths):
+def test_enum_query_param(paths, schemas):
     operations = paths["/enum_query"]
     assert "get" in operations
 
@@ -157,18 +176,23 @@ def test_enum_query_param(paths):
     assert len(operation["parameters"]) == 1
 
     parameter = operation["parameters"][0]
-    assert parameter == {
-        "name": "enum_query_param",
-        "in": "query",
-        "required": True,
-        "schema": {
-            "type": "string",
-            "enum": ["x", "y"],
+    assert_subset_dict(
+        parameter,
+        {
+            "name": "enum_query_param",
+            "in": "query",
+            "required": True,
+            "schema": {
+                "$ref": "#/components/schemas/MyEnum",
+            },
         },
-    }
+    )
+
+    schema = schemas["MyEnum"]
+    assert_subset_dict(schema, {"enum": ["x", "y"]})
 
 
-def test_enum_with_default_query_param(paths):
+def test_enum_with_default_query_param(paths, schemas):
     operations = paths["/enum_query/default"]
     assert "get" in operations
 
@@ -177,16 +201,24 @@ def test_enum_with_default_query_param(paths):
     assert len(operation["parameters"]) == 1
 
     parameter = operation["parameters"][0]
-    assert parameter == {
-        "name": "enum_query_param",
-        "in": "query",
-        "required": True,
-        "schema": {
-            "type": "string",
-            "enum": ["x", "y"],
-            "default": "x",
+    assert_subset_dict(
+        parameter,
+        {
+            "name": "enum_query_param",
+            "in": "query",
+            "required": True,
+            "schema": {
+                "allOf": [
+                    {"$ref": "#/components/schemas/MyEnum"},
+                ],
+                "default": "x",
+            },
         },
-    }
+    )
+
+    schema = schemas["MyEnum"]
+    assert_subset_dict(schema, {"enum": ["x", "y"]})
+
 
 
 def test_int_query_param(paths):
@@ -198,12 +230,15 @@ def test_int_query_param(paths):
     assert len(operation["parameters"]) == 1
 
     parameter = operation["parameters"][0]
-    assert parameter == {
-        "name": "query_param",
-        "in": "query",
-        "required": True,
-        "schema": {"type": "integer"},
-    }
+    assert_subset_dict(
+        parameter,
+        {
+            "name": "query_param",
+            "in": "query",
+            "required": True,
+            "schema": {"type": "integer"},
+        },
+    )
 
 
 def test_optional_int_query_param(paths):
@@ -215,12 +250,15 @@ def test_optional_int_query_param(paths):
     assert len(operation["parameters"]) == 1
 
     parameter = operation["parameters"][0]
-    assert parameter == {
-        "name": "optional_query_param",
-        "in": "query",
-        "required": False,
-        "schema": {"type": "integer"},
-    }
+    assert_subset_dict(
+        parameter,
+        {
+            "name": "optional_query_param",
+            "in": "query",
+            "required": False,
+            "schema": {"type": "integer"},
+        },
+    )
 
 
 def test_optional_int_with_default_query_param(paths):
@@ -232,15 +270,18 @@ def test_optional_int_with_default_query_param(paths):
     assert len(operation["parameters"]) == 1
 
     parameter = operation["parameters"][0]
-    assert parameter == {
-        "name": "optional_query_param_with_default",
-        "in": "query",
-        "required": False,
-        "schema": {
-            "type": "integer",
-            "default": 1,
+    assert_subset_dict(
+        parameter,
+        {
+            "name": "optional_query_param_with_default",
+            "in": "query",
+            "required": False,
+            "schema": {
+                "type": "integer",
+                "default": 1,
+            },
         },
-    }
+    )
 
 
 def test_list_query_param(paths):
@@ -252,15 +293,18 @@ def test_list_query_param(paths):
     assert len(operation["parameters"]) == 1
 
     parameter = operation["parameters"][0]
-    assert parameter == {
-        "name": "query_param",
-        "in": "query",
-        "required": True,
-        "schema": {
-            "type": "array",
-            "items": {"type": "string"},
+    assert_subset_dict(
+        parameter,
+        {
+            "name": "query_param",
+            "in": "query",
+            "required": True,
+            "schema": {
+                "type": "array",
+                "items": {"type": "string"},
+            },
         },
-    }
+    )
 
 
 def test_optional_list_query_param(paths):
@@ -272,15 +316,18 @@ def test_optional_list_query_param(paths):
     assert len(operation["parameters"]) == 1
 
     parameter = operation["parameters"][0]
-    assert parameter == {
-        "name": "optional_query_param",
-        "in": "query",
-        "required": False,
-        "schema": {
-            "type": "array",
-            "items": {"type": "string"},
+    assert_subset_dict(
+        parameter,
+        {
+            "name": "optional_query_param",
+            "in": "query",
+            "required": False,
+            "schema": {
+                "type": "array",
+                "items": {"type": "string"},
+            },
         },
-    }
+    )
 
 
 def test_optional_list_with_default_query_param(paths):
@@ -292,13 +339,16 @@ def test_optional_list_with_default_query_param(paths):
     assert len(operation["parameters"]) == 1
 
     parameter = operation["parameters"][0]
-    assert parameter == {
-        "name": "optional_query_param_with_default",
-        "in": "query",
-        "required": False,
-        "schema": {
-            "type": "array",
-            "items": {"type": "string"},
-            "default": ["x"],
+    assert_subset_dict(
+        parameter,
+        {
+            "name": "optional_query_param_with_default",
+            "in": "query",
+            "required": False,
+            "schema": {
+                "type": "array",
+                "items": {"type": "string"},
+                "default": ["x"],
+            },
         },
-    }
+    )
