@@ -1,11 +1,31 @@
-from typing import List, Dict, TypeVar
+from typing import List, Dict, TypeVar, Optional
 from enum import EnumMeta
 import inspect
 
+from pydantic.fields import FieldInfo
+from pydantic import create_model
+
 from apispec import BasePlugin
-from torn_open.types import is_optional, is_list
+from torn_open.types import is_optional, GenericAliases
 from torn_open.models import ClientError, ServerError
 from torn_open.api_spec.exception_finder import get_exceptions
+from torn_open.api_spec.core import TornOpenComponents
+
+# utils
+def _is_implemented(method, handler):
+    if isinstance(method, str):
+        method_name = method
+        method = getattr(handler, method)
+    else:
+        method_name = method.__name__
+    return method is not getattr(handler.__bases__[0], method_name)
+
+
+def _clear_none_from_dict(dictionary):
+    return {k: v for k, v in dictionary.items() if v is not None}
+
+
+SCHEMA_REF_TEMPLATE = "#/components/schemas/{model}"
 
 
 class TornOpenPlugin(BasePlugin):
@@ -16,7 +36,7 @@ class TornOpenPlugin(BasePlugin):
 
     def path_helper(self, *, url_spec, parameters, **_):
         path = get_path(url_spec)
-        parameters.extend(get_path_params(url_spec.handler_class))
+        parameters.extend(get_path_params(url_spec.handler_class, self.spec.components))
         return path
 
     def operation_helper(self, *, operations, url_spec, **_):
@@ -53,116 +73,70 @@ def right_strip_path(path):
 
 
 # Path params
-def get_path_params(handler):
+def get_path_params(handler, components: TornOpenComponents):
     path_params = handler.handler_class_params.path_params
-    parameters = [PathParameter(parameter) for parameter in path_params.values()]
+    parameters = [
+        PathParameter(parameter, components) for parameter in path_params.values()
+    ]
     return parameters
 
 
-def _unpack_enum(enum_meta: EnumMeta):
-    for enum_item in enum_meta.__members__.values():
-        yield enum_item.name
+def is_inspect_empty(obj):
+    return obj is inspect._empty
 
 
-def _get_type_to_openapi_type_mapping(annotation):
-    if isinstance(annotation, TypeVar):
-        annotation = str
+def Schema(parameter: inspect.Parameter, components: TornOpenComponents):
 
-    types_mapping = {
-        str: "string",
-        int: "integer",
-        float: "number",
-        list: "array",
-        List: "array",
-    }
-    if annotation in types_mapping:
-        return types_mapping[annotation]
+    annotation = (
+        parameter.annotation if not is_inspect_empty(parameter.annotation) else str
+    )
+    default = parameter.default if not is_inspect_empty(parameter.default) else ...
+    fields = {parameter.name: (annotation, default)}
 
-    if is_optional(annotation):
-        return _get_type_to_openapi_type_mapping(annotation.__args__[0])
+    model = create_model("_", **fields).schema(ref_template=SCHEMA_REF_TEMPLATE)
+    schema = model.get("properties", {}).get(parameter.name, {})
+    if schema.get("type") == "integer":
+        if schema.get("exclusiveMinimum") is not None:
+            schema["minimum"] = schema["exclusiveMinimum"]
+            schema["exclusiveMinimum"] = True
+    elif schema.get("type") == "array":
+        if isinstance(annotation, GenericAliases) and annotation._name == "Tuple":
+            schema["items"] = {"oneOf": schema["items"]}
 
-    if isinstance(annotation, EnumMeta):
-        annotation = str
-        return _get_type_to_openapi_type_mapping(annotation)
-
-    if is_list(annotation):
-        annotation = annotation.__origin__
-        return _get_type_to_openapi_type_mapping(annotation)
-
-    if not isinstance(annotation, type) and is_optional(annotation.__args__):
-        return _get_type_to_openapi_type_mapping(annotation.__args__[0])
-
-
-def _get_item_type(annotation):
-    if not getattr(annotation, "__args__", None):
-        return None
-    elif len(annotation.__args__) == 1:
-        item_type = _get_type_to_openapi_type_mapping(annotation.__args__[0])
-    elif is_optional(annotation):
-        item_type = _get_type_to_openapi_type_mapping(
-            annotation.__args__[0].__args__[0]
-        )
-    else:
-        item_type = None
-    return item_type
-
-
-def Items(annotation):
-    if _get_type_to_openapi_type_mapping(annotation) != "array":
-        return None
-
-    item_type = _get_item_type(annotation)
-
-    return {
-        "type": item_type,
-    }
-
-
-def Schema(parameter: inspect.Parameter):
-    def _get_default_value_of_parameter(parameter: inspect.Parameter):
-        annotation = parameter.annotation
-        default = parameter.default if parameter.default is not inspect._empty else None
-        return (
-            default.value if default and isinstance(annotation, EnumMeta) else default
-        )
-
-    annotation = parameter.annotation
-    _type = _get_type_to_openapi_type_mapping(annotation)
-    _enum = [*_unpack_enum(annotation)] if isinstance(annotation, EnumMeta) else None
-    default = _get_default_value_of_parameter(parameter)
-    items = Items(annotation)
-
-    schema = {
-        "type": _type,
-        "enum": _enum,
-        "default": default,
-        "items": items,
-    }
     schema = _clear_none_from_dict(schema)
+
+    referenced_schemas = model.pop("definitions", {})
+    if not referenced_schemas:
+        return schema
+
+    for referenced_schema_id, referenced_schema in referenced_schemas.items():
+        components.schema(referenced_schema_id, referenced_schema)
+
     return schema
 
 
-def PathParameter(parameter: inspect.Parameter):
-    return Parameter(parameter, param_type="path", required=True)
+def PathParameter(parameter: inspect.Parameter, components: TornOpenComponents):
+    return Parameter(parameter, "path", components, required=True)
 
 
-def QueryParameter(parameter: inspect.Parameter):
-    return Parameter(parameter, param_type="query")
-
-
-def Parameter(parameter: inspect.Parameter, param_type, required: bool = None):
+def Parameter(
+    parameter: inspect.Parameter,
+    param_type,
+    components: TornOpenComponents,
+    required: bool = None,
+):
     return {
         "name": parameter.name,
         "in": param_type,
         "required": required
         if required is not None
         else not is_optional(parameter.annotation),
-        "schema": Schema(parameter),
+        "schema": Schema(parameter, components),
     }
 
 
 # Operations helper methods
-def Operations(url_spec, components):
+def Operations(url_spec, components: TornOpenComponents):
     def _get_implemented_http_methods(handler):
         return [
             method.lower()
@@ -173,46 +147,53 @@ def Operations(url_spec, components):
     handler = url_spec.handler_class
     implemented_methods = _get_implemented_http_methods(handler)
     operations = {
-        method: Operation(method, handler, components) for method in implemented_methods
+        method: Operation(method, handler, components).schema()
+        for method in implemented_methods
     }
     return operations
 
 
-def Operation(method: str, handler, components):
-    def _get_tags(http_method, handler):
-        method = getattr(handler, http_method, None)
-        if not _is_implemented(http_method, handler):
+class Operation:
+    def _get_tags(self):
+        if not _is_implemented(self.method, self.handler):
             return None
-        return getattr(method, "_openapi_tags", None)
+        return getattr(self.method, "_openapi_tags", None)
 
-    def _get_summary(http_method, handler):
-        method = getattr(handler, http_method, None)
-        if not _is_implemented(http_method, handler):
+    def _get_summary(self):
+        if not _is_implemented(self.method, self.handler):
             return None
-        return getattr(method, "_openapi_summary", None)
+        return getattr(self.method, "_openapi_summary", None)
 
-    def _get_query_params(method, handler):
-        parameters = handler.handler_class_params.query_params[method].values()
-        return [QueryParameter(parameter) for parameter in parameters]
+    def _get_query_params(self):
+        parameters = self.handler.handler_class_params.query_params[
+            self.method.__name__
+        ].values()
+        return [
+            Parameter(parameter, "query", self.components) for parameter in parameters
+        ]
 
-    def _get_operation_description(method: str, handler):
-        description = getattr(handler, method).__doc__
+    def _get_operation_description(self):
+        description = self.method.__doc__
         description = description.strip() if description else description
         return description
 
-    operation = {
-        "tags": _get_tags(method, handler),
-        "summary": _get_summary(method, handler),
-        "parameters": _get_query_params(method, handler),
-        "description": _get_operation_description(method, handler),
-        "requestBody": RequestBody(method, handler),
-        "responses": Responses(method, handler, components),
-    }
-    operation = _clear_none_from_dict(operation)
-    return operation
+    def __init__(self, method, handler, components):
+        self.method = getattr(handler, method, None)
+        self.handler = handler
+        self.components = components
 
+        operation = {
+            "tags": self._get_tags(),
+            "summary": self._get_summary(),
+            "description": self._get_operation_description(),
+            "parameters": self._get_query_params(),
+            "requestBody": RequestBody(method, handler),
+            "responses": Responses(method, handler, components),
+        }
+        self._schema = _clear_none_from_dict(operation)
 
-SCHEMA_REF_TEMPLATE = "#/components/schemas/{model}"
+    def schema(self):
+        return self._schema
 
 
 def RequestBody(method: str, handler):
@@ -343,12 +324,3 @@ def FailedResponse(error_types):
             }
         },
     }
-
-
-# utils
-def _is_implemented(method, handler):
-    return getattr(handler, method) is not getattr(handler.__bases__[0], method)
-
-
-def _clear_none_from_dict(dictionary):
-    return {k: v for k, v in dictionary.items() if v}

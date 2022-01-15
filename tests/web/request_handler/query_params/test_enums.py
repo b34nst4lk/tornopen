@@ -10,52 +10,36 @@ from torn_open import Application, AnnotatedHandler
 
 @pytest.fixture
 def app():
-    class RequiredEnumQueryParamHandler(AnnotatedHandler):
-        class EnumParam(str, Enum):
-            red = "red"
-            blue = "blue"
+    class StrEnum(str, Enum):
+        red = "red"
+        blue = "blue"
 
-        def get(self, query_param: EnumParam):
+    class RequiredEnumQueryParamHandler(AnnotatedHandler):
+        def get(self, query_param: StrEnum):
             self.write({"query_param": query_param.name})
 
     class OptionalEnumQueryParamHandler(AnnotatedHandler):
-        class EnumParam(str, Enum):
-            red = "red"
-            blue = "blue"
-
-        def get(self, query_param: Optional[EnumParam]):
+        def get(self, query_param: Optional[StrEnum]):
             self.write({"query_param": query_param.name})
 
-    class RequiredIntEnumQueryParamHandler(AnnotatedHandler):
-        class EnumParam(IntEnum):
-            red = 1
-            blue = 2
+    class IntegerEnum(IntEnum):
+        red = 1
+        blue = 2
 
-        def get(self, query_param: EnumParam):
+    class RequiredIntEnumQueryParamHandler(AnnotatedHandler):
+        def get(self, query_param: IntegerEnum):
             self.write({"query_param": query_param.name})
 
     class OptionalIntEnumQueryParamHandler(AnnotatedHandler):
-        class EnumParam(IntEnum):
-            red = 1
-            blue = 2
-
-        def get(self, query_param: Optional[EnumParam]):
+        def get(self, query_param: Optional[IntegerEnum]):
             self.write({"query_param": query_param.name})
 
     class RequiredEnumListQueryParamHandler(AnnotatedHandler):
-        class EnumParam(Enum):
-            red = 1
-            blue = 2
-
-        def get(self, query_param: List[EnumParam]):
+        def get(self, query_param: List[IntegerEnum]):
             self.write({"query_param": [q.name for q in query_param]})
 
     class OptionalEnumListQueryParamHandler(AnnotatedHandler):
-        class EnumParam(Enum):
-            red = 1
-            blue = 2
-
-        def get(self, query_param: Optional[List[EnumParam]]):
+        def get(self, query_param: Optional[List[IntegerEnum]]):
             self.write({"query_param": [q.name for q in query_param]})
 
     return Application(

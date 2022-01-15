@@ -1,5 +1,5 @@
 import inspect
-from typing import Pattern, Union, Tuple, Generator
+from typing import Pattern, Union, Tuple, Generator, List
 
 from tornado.web import url, RequestHandler, Application
 from tornado.routing import URLSpec, Rule, RuleRouter, Matcher
@@ -85,7 +85,7 @@ def _gather_rules(
             yield from _gather_rules(target.rules)
 
 
-def create_api_spec(rules):
+def create_api_spec(rules: List[_Rule]):
     api_spec = TornOpenAPISpec(
         title="tornado-server",
         version="1.0.0",
