@@ -1,8 +1,6 @@
-from typing import List, Dict, TypeVar, Optional
-from enum import EnumMeta
+from typing import Dict, Tuple, Optional
 import inspect
 
-from pydantic.fields import FieldInfo
 from pydantic import create_model
 
 from apispec import BasePlugin
@@ -100,7 +98,10 @@ def Schema(parameter: inspect.Parameter, components: TornOpenComponents):
             schema["minimum"] = schema["exclusiveMinimum"]
             schema["exclusiveMinimum"] = True
     elif schema.get("type") == "array":
-        if isinstance(annotation, GenericAliases) and annotation._name == "Tuple":
+        if isinstance(annotation, GenericAliases) and annotation.__origin__ in (
+            Tuple,
+            tuple,
+        ):
             schema["items"] = {"oneOf": schema["items"]}
 
     schema = _clear_none_from_dict(schema)
