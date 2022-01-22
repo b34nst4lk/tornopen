@@ -57,6 +57,12 @@ is_list = functools.partial(is_generic, types=(list, List))
 is_tuple = functools.partial(is_generic, types=(tuple, Tuple))
 
 
+def is_ellipses_tuple(parameter_type):
+    if hasattr(parameter_type, "__args__") and parameter_type.__args__[-1] == Ellipsis:
+        return True
+    return False
+
+
 def is_primitive(parameter_type: type):
     return parameter_type in AllPrimitives
 
@@ -135,7 +141,14 @@ def cast_tuple(parameter_type: Union[type, OptionalType, OptionalList], val: str
         return tuple(val_list)
 
     inner_types = parameter_type.__args__
+    if is_ellipses_tuple(parameter_type):
+        return cast_ellipses_tuple(val_list, inner_types[0])
     return cast_tuple_items(val_list, inner_types)
+
+
+def cast_ellipses_tuple(values, inner_type):
+    casted_list = [cast(inner_type, value) for value in values]
+    return tuple(casted_list)
 
 
 def cast_tuple_items(values, inner_types):

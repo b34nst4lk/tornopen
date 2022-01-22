@@ -102,7 +102,8 @@ def Schema(parameter: inspect.Parameter, components: TornOpenComponents):
             Tuple,
             tuple,
         ):
-            schema["items"] = {"oneOf": schema["items"]}
+            if len(schema["items"]) > 1:
+                schema["items"] = {"oneOf": schema["items"]}
 
     schema = _clear_none_from_dict(schema)
 
